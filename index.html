@@ -10,8 +10,8 @@
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     
-    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/mapbox-gl-draw.css" type="text/css">
-    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/mapbox-gl-draw.js"></script>
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.2/mapbox-gl-draw.css" type="text/css">
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.2/mapbox-gl-draw.min.js"></script>
     
     <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
     <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css" type="text/css">
@@ -26,21 +26,40 @@
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* Fix Geocoder Z-Index and Positioning */
-        .mapboxgl-ctrl-geocoder { 
-            min-width: 300px; 
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        /* --- CRITICAL FIXES --- */
+        
+        /* 1. Restore Button Styles (Tailwind Reset Fix) */
+        .mapboxgl-ctrl-group > button {
+            width: 29px;
+            height: 29px;
+            display: block;
+            padding: 0;
+            outline: none;
+            border: 0;
+            box-sizing: border-box;
+            background-color: #ffffff !important; /* Force white background */
+            cursor: pointer;
         }
         
-        /* Force Drawing Tools to be visible above other overlays */
+        /* 2. Ensure Icons are visible */
+        .mapbox-gl-draw_ctrl-draw-btn {
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        /* 3. Fix Geocoder Z-Index */
+        .mapboxgl-ctrl-geocoder { 
+            min-width: 300px; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 20;
+        }
+        
+        /* 4. Force Drawing Tools to be visible above map */
         .mapboxgl-ctrl-top-right { 
             z-index: 50 !important; 
             margin-top: 10px;
             margin-right: 10px;
         }
-        
-        /* Ensure modal is always on top */
-        #modal-token { z-index: 9999; }
     </style>
 </head>
 <body class="flex h-screen w-screen bg-gray-50 font-sans text-gray-900">
@@ -53,7 +72,6 @@
                 Falcon Pave Works
             </h1>
             <p class="text-sm text-gray-500 mt-1">Internal Estimation Tool</p>
-            <button id="btn-reset-token" class="text-xs text-blue-500 underline mt-2 hover:text-blue-700 cursor-pointer">Reset API Token</button>
         </div>
 
         <div class="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
@@ -89,7 +107,6 @@
                             value="145" 
                             class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
                         >
-                        <p class="text-xs text-gray-400 mt-1">Standard HMA is approx 145 lbs/ft³</p>
                     </div>
                 </div>
             </section>
@@ -156,104 +173,19 @@
 
     <div class="flex-1 relative h-full">
         <div id="map"></div>
-
-        <div id="modal-token" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-gray-900/90 backdrop-blur-sm">
-            <div class="max-w-md w-full p-8 bg-white shadow-2xl rounded-xl text-center m-4">
-                <div class="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
-                </div>
-                <h2 class="text-2xl font-bold text-gray-900 mb-2">Setup Mapbox</h2>
-                <p class="text-gray-600 mb-6 text-sm">
-                    Paste your public Mapbox Access Token below to initialize the satellite map.
-                </p>
-                
-                <input 
-                    type="text" 
-                    id="input-token" 
-                    placeholder="pk.eyJ1..." 
-                    class="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-xs text-gray-600"
-                >
-                <p id="error-msg" class="text-red-500 text-xs mb-4 hidden"></p>
-
-                <button id="btn-save-token" class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-md">
-                    Save & Load Map
-                </button>
-                
-                <div class="mt-4 text-xs text-gray-400">
-                    Don't have one? <a href="https://account.mapbox.com/" target="_blank" class="underline hover:text-blue-600">Get a free token here</a>.
-                </div>
-            </div>
-        </div>
     </div>
 
     <script>
-        // ---------------------------------------------------------
-        // GLOBAL VARIABLES
-        // ---------------------------------------------------------
+        // --- CONFIG ---
+        // Hardcoded API Key from user
+        const PROVIDED_KEY = 'pk.eyJ1IjoiZnJ1Y3RpZnltZSIsImEiOiJjbWk3cGtjOWYwM2psMm5vczJ4eDRxamN0In0.JMcTVNmkgG3Lotc_vNmSWA';
+        
         let map;
         let draw;
-        const STORAGE_KEY = 'pave_estimator_mapbox_token';
-
-        // DOM Elements
-        const modalToken = document.getElementById('modal-token');
-        const inputToken = document.getElementById('input-token');
-        const errorMsg = document.getElementById('error-msg');
-        const btnSaveToken = document.getElementById('btn-save-token');
-        const btnResetToken = document.getElementById('btn-reset-token');
-
-        const inputThickness = document.getElementById('input-thickness');
-        const inputDensity = document.getElementById('input-density');
         
-        const sectionSelection = document.getElementById('section-selection');
-        const sectionEmpty = document.getElementById('section-empty');
-        const btnToggleExclusion = document.getElementById('btn-toggle-exclusion');
-        const btnDelete = document.getElementById('btn-delete');
-
-        const elGross = document.getElementById('val-gross');
-        const elExcluded = document.getElementById('val-excluded');
-        const elNet = document.getElementById('val-net');
-        const elTons = document.getElementById('val-tons');
-
-        // State
-        const state = {
-            thickness: 2.0,
-            density: 145,
-            selectedIds: []
-        };
-
-        // ---------------------------------------------------------
-        // 1. APP INITIALIZATION
-        // ---------------------------------------------------------
-        function checkAuth() {
-            const token = localStorage.getItem(STORAGE_KEY);
-            if (token) {
-                initMap(token);
-            } else {
-                showModal();
-            }
-        }
-
-        function showModal(msg) {
-            modalToken.classList.remove('hidden');
-            if (msg) {
-                errorMsg.innerText = msg;
-                errorMsg.classList.remove('hidden');
-            }
-        }
-
-        function hideModal() {
-            modalToken.classList.add('hidden');
-            errorMsg.classList.add('hidden');
-        }
-
-        // ---------------------------------------------------------
-        // 2. MAPBOX SETUP
-        // ---------------------------------------------------------
-        function initMap(token) {
-            mapboxgl.accessToken = token;
-
-            // Check for duplicate map instances (if re-initializing)
-            if (map) return;
+        // --- APP INIT ---
+        (function initApp() {
+            mapboxgl.accessToken = PROVIDED_KEY;
 
             try {
                 map = new mapboxgl.Map({
@@ -263,76 +195,92 @@
                     zoom: 3
                 });
             } catch (e) {
-                showModal("Error initializing map. Check console.");
+                alert("Error initializing map: " + e.message);
                 return;
             }
 
-            // Error Handler for Invalid Tokens
-            map.on('error', (e) => {
-                if (e.error && (e.error.status === 401 || e.error.status === 403)) {
-                    console.error("Auth Error:", e);
-                    localStorage.removeItem(STORAGE_KEY);
-                    showModal("Invalid Token. Please check and try again.");
-                }
-            });
-
             map.on('load', () => {
-                hideModal();
-                addControls(token);
+                // 1. Navigation
+                map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+
+                // 2. Geocoder
+                const geocoder = new MapboxGeocoder({
+                    accessToken: mapboxgl.accessToken,
+                    mapboxgl: mapboxgl,
+                    marker: false,
+                    placeholder: 'Search for address...',
+                    zoom: 19
+                });
+                map.addControl(geocoder, 'top-left');
+
+                // 3. Draw Tools
+                draw = new MapboxDraw({
+                    displayControlsDefault: false,
+                    controls: {
+                        polygon: true,
+                        trash: true
+                    },
+                    defaultMode: 'simple_select',
+                    styles: getDrawStyles()
+                });
+                map.addControl(draw, 'top-right');
+
+                // 4. Events
+                setupMapEvents();
             });
-        }
+        })();
 
-        function addControls(token) {
-            // Navigation
-            map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+        // --- STATE & DOM ---
+        const state = { thickness: 2.0, density: 145, selectedIds: [] };
+        
+        const elGross = document.getElementById('val-gross');
+        const elExcluded = document.getElementById('val-excluded');
+        const elNet = document.getElementById('val-net');
+        const elTons = document.getElementById('val-tons');
+        const sectionSelection = document.getElementById('section-selection');
+        const sectionEmpty = document.getElementById('section-empty');
+        const btnToggleExclusion = document.getElementById('btn-toggle-exclusion');
+        const btnDelete = document.getElementById('btn-delete');
 
-            // Geocoder
-            const geocoder = new MapboxGeocoder({
-                accessToken: token, // Pass explicitly
-                mapboxgl: mapboxgl,
-                marker: false,
-                placeholder: 'Search for address...',
-                zoom: 19
-            });
-            map.addControl(geocoder, 'top-left');
-
-            // Draw Tools with Custom Styles
-            draw = new MapboxDraw({
-                displayControlsDefault: false,
-                controls: {
-                    polygon: true,
-                    trash: true
-                },
-                defaultMode: 'simple_select',
-                styles: getDrawStyles() // Moved styles to a function for cleanliness
-            });
-
-            map.addControl(draw, 'top-right');
-
-            // Setup Event Listeners for Map Interactions
-            setupMapEvents();
-        }
-
-        // ---------------------------------------------------------
-        // 3. LOGIC & CALCULATIONS
-        // ---------------------------------------------------------
+        // --- EVENTS ---
         function setupMapEvents() {
             map.on('draw.create', updateStats);
             map.on('draw.delete', updateStats);
             map.on('draw.update', updateStats);
-            
             map.on('draw.selectionchange', (e) => {
                 state.selectedIds = e.features.map(f => f.id);
                 updateUISelection();
             });
         }
 
+        function updateStats() {
+            const data = draw.getAll();
+            let paveArea = 0;
+            let excludeArea = 0;
+
+            data.features.forEach(feature => {
+                const areaSqMeters = turf.area(feature);
+                const areaSqFt = areaSqMeters * 10.7639;
+                if (feature.properties?.user_type === 'exclusion') {
+                    excludeArea += areaSqFt;
+                } else {
+                    paveArea += areaSqFt;
+                }
+            });
+
+            const netArea = Math.max(0, paveArea - excludeArea);
+            const tons = (netArea * (state.thickness / 12) * state.density) / 2000;
+
+            elGross.innerText = Math.round(paveArea).toLocaleString() + ' sq ft';
+            elExcluded.innerText = '-' + Math.round(excludeArea).toLocaleString() + ' sq ft';
+            elNet.innerText = Math.round(netArea).toLocaleString() + ' sq ft';
+            elTons.innerText = tons.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
         function updateUISelection() {
             if (state.selectedIds.length > 0) {
                 sectionSelection.classList.remove('hidden');
                 sectionEmpty.classList.add('hidden');
-                
-                // Update Toggle Button Text/Style based on first selection
                 const firstFeature = draw.get(state.selectedIds[0]);
                 if(firstFeature.properties?.user_type === 'exclusion') {
                     btnToggleExclusion.innerText = "Set to Pavement";
@@ -347,86 +295,25 @@
             }
         }
 
-        function updateStats() {
-            if (!draw) return;
-            const data = draw.getAll();
-            let paveArea = 0;
-            let excludeArea = 0;
-
-            data.features.forEach(feature => {
-                // Turf.area returns square meters
-                const areaSqMeters = turf.area(feature);
-                const areaSqFt = areaSqMeters * 10.7639;
-
-                if (feature.properties && feature.properties.user_type === 'exclusion') {
-                    excludeArea += areaSqFt;
-                } else {
-                    paveArea += areaSqFt;
-                }
-            });
-
-            const netArea = Math.max(0, paveArea - excludeArea);
-            
-            // Formula: (Area * Thickness_in / 12) * Density_lbs_ft3 / 2000
-            const cubicFeet = netArea * (state.thickness / 12);
-            const totalLbs = cubicFeet * state.density;
-            const tons = totalLbs / 2000;
-
-            // Update DOM
-            elGross.innerText = Math.round(paveArea).toLocaleString() + ' sq ft';
-            elExcluded.innerText = '-' + Math.round(excludeArea).toLocaleString() + ' sq ft';
-            elNet.innerText = Math.round(netArea).toLocaleString() + ' sq ft';
-            elTons.innerText = tons.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
-
-        // ---------------------------------------------------------
-        // 4. DOM EVENTS
-        // ---------------------------------------------------------
-        btnSaveToken.addEventListener('click', () => {
-            const val = inputToken.value.trim();
-            if (val.startsWith('pk.')) {
-                localStorage.setItem(STORAGE_KEY, val);
-                hideModal();
-                initMap(val); // Load immediately without reload
-            } else {
-                errorMsg.innerText = 'Invalid token. It should start with "pk."';
-                errorMsg.classList.remove('hidden');
-            }
-        });
-
-        btnResetToken.addEventListener('click', () => {
-            if(confirm("Remove saved Mapbox token and reset?")) {
-                localStorage.removeItem(STORAGE_KEY);
-                location.reload();
-            }
-        });
-
-        inputThickness.addEventListener('input', (e) => {
+        // --- INPUT LISTENERS ---
+        document.getElementById('input-thickness').addEventListener('input', (e) => {
             state.thickness = parseFloat(e.target.value) || 0;
             updateStats();
         });
-
-        inputDensity.addEventListener('input', (e) => {
+        document.getElementById('input-density').addEventListener('input', (e) => {
             state.density = parseFloat(e.target.value) || 0;
             updateStats();
         });
-
         btnToggleExclusion.addEventListener('click', () => {
             state.selectedIds.forEach(id => {
-                const feature = draw.get(id);
-                const currentType = feature.properties?.user_type;
-                const newType = currentType === 'exclusion' ? 'pavement' : 'exclusion';
-                
+                const f = draw.get(id);
+                const newType = f.properties?.user_type === 'exclusion' ? 'pavement' : 'exclusion';
                 draw.setFeatureProperty(id, 'user_type', newType);
             });
-            
-            // Cycle selection to refresh styles visually
-            const currentIds = state.selectedIds;
-            draw.changeMode('simple_select', { featureIds: currentIds });
+            draw.changeMode('simple_select', { featureIds: state.selectedIds });
             updateStats();
-            updateUISelection(); // Update button style
+            updateUISelection();
         });
-
         btnDelete.addEventListener('click', () => {
             draw.trash();
             state.selectedIds = [];
@@ -434,9 +321,7 @@
             updateStats();
         });
 
-        // ---------------------------------------------------------
-        // 5. STYLES (Config)
-        // ---------------------------------------------------------
+        // --- STYLES ---
         function getDrawStyles() {
             return [
                 // ACTIVE (Drawing)
@@ -508,9 +393,6 @@
                 }
             ];
         }
-
-        // Run App
-        checkAuth();
     </script>
 </body>
 </html>
