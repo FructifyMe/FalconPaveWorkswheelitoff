@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Falcon Pave Works Estimator Tool</title>
+    <title>Falcon Pave Works Tool</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -33,6 +33,9 @@
 
         /* Fix Geocoder Z-Index to appear above map */
         .mapboxgl-ctrl-geocoder { min-width: 300px; }
+        
+        /* Force Drawing Tools to be visible above other overlays */
+        .mapboxgl-ctrl-top-right { z-index: 50 !important; }
     </style>
 </head>
 <body class="flex h-screen w-screen bg-gray-50 font-sans">
@@ -45,7 +48,7 @@
             <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
                 <!-- Layers Icon -->
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-                PaveEstimator
+                Falcon Pave Works
             </h1>
             <p class="text-sm text-gray-500 mt-1">Internal Estimation Tool</p>
             <button onclick="clearToken()" class="text-xs text-blue-500 underline mt-2 hover:text-blue-700">Reset API Token</button>
@@ -163,7 +166,7 @@
                 <input 
                     type="text" 
                     id="input-token" 
-                    placeholder="pk.eyJ1IjoiZnJ1Y3RpZnltZSIsImEiOiJjbWk3cGtjOWYwM2psMm5vczJ4eDRxamN0In0.JMcTVNmkgG3Lotc_vNmSWA" 
+                    placeholder="pk.eyJ1..." 
                     class="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-xs text-gray-600"
                 />
 
@@ -177,8 +180,8 @@
             </div>
         </div>
 
-        <!-- Floating Instructions -->
-        <div class="absolute top-4 right-4 bg-white/90 backdrop-blur shadow-sm p-3 rounded-lg text-xs text-gray-600 max-w-xs border border-gray-200 z-10">
+        <!-- Floating Instructions (MOVED TO BOTTOM LEFT TO FIX OVERLAP) -->
+        <div class="absolute bottom-8 left-4 bg-white/90 backdrop-blur shadow-sm p-3 rounded-lg text-xs text-gray-600 max-w-xs border border-gray-200 z-10">
             <p class="font-semibold mb-1 text-gray-900">How to use:</p>
             <ul class="list-disc pl-4 space-y-1">
                 <li>Use the search bar (top-left) to find address.</li>
@@ -186,6 +189,7 @@
                 <li>Click a shape to select it.</li>
                 <li>Use the sidebar to mark islands as "Exclusions".</li>
             </ul>
+            <button onclick="this.parentElement.style.display='none'" class="block mt-2 text-blue-500 underline text-[10px]">Dismiss</button>
         </div>
     </div>
 
