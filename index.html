@@ -56,7 +56,7 @@
 
         <div class="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
             
-            <!-- NEW: Instructions (Moved inside Sidebar) -->
+            <!-- Instructions (Inside Sidebar) -->
             <section class="bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm text-gray-600">
                 <p class="font-semibold mb-2 text-gray-900">How to use:</p>
                 <ul class="list-disc pl-4 space-y-1 text-xs">
@@ -190,8 +190,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- NO FLOATING INSTRUCTIONS HERE -->
     </div>
 
     <script>
@@ -254,7 +252,7 @@
 
 
             // ---------------------------------------------------------
-            // 3. DRAW TOOLS CONFIGURATION
+            // 3. DRAW TOOLS CONFIGURATION (FIXED STYLES)
             // ---------------------------------------------------------
             const draw = new MapboxDraw({
                 displayControlsDefault: false,
@@ -262,9 +260,26 @@
                     polygon: true,
                     trash: true
                 },
-                defaultMode: 'draw_polygon',
+                // CHANGED: Default to simple selection so user has to click 'Polygon' to start
+                defaultMode: 'simple_select', 
                 styles: [
-                    // ACTIVE (being drawn)
+                    // --- ACTIVE (DRAWING) ---
+                    // Line active (The line you see while drawing)
+                    {
+                        'id': 'gl-draw-line-active',
+                        'type': 'line',
+                        'filter': ['all', ['==', '$type', 'LineString'], ['==', 'active', 'true']],
+                        'layout': {
+                            'line-cap': 'round',
+                            'line-join': 'round'
+                        },
+                        'paint': {
+                            'line-color': '#fbb03b',
+                            'line-dasharray': [0.2, 2],
+                            'line-width': 2
+                        }
+                    },
+                    // Polygon active (The fill while drawing)
                     {
                         'id': 'gl-draw-polygon-fill-active',
                         'type': 'fill',
@@ -274,6 +289,7 @@
                             'fill-opacity': 0.2
                         }
                     },
+                    // Polygon stroke active
                     {
                         'id': 'gl-draw-polygon-stroke-active',
                         'type': 'line',
@@ -284,7 +300,28 @@
                             'line-width': 2
                         }
                     },
-                    // STATIC - PAVEMENT (Default)
+                    // Vertex Points (The white dots you drag to edit)
+                    {
+                        'id': 'gl-draw-polygon-and-line-vertex-stroke-inactive',
+                        'type': 'circle',
+                        'filter': ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']],
+                        'paint': {
+                            'circle-radius': 5,
+                            'circle-color': '#fff'
+                        }
+                    },
+                    {
+                        'id': 'gl-draw-polygon-and-line-vertex-inactive',
+                        'type': 'circle',
+                        'filter': ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']],
+                        'paint': {
+                            'circle-radius': 3,
+                            'circle-color': '#fbb03b'
+                        }
+                    },
+
+                    // --- STATIC (FINISHED SHAPES) ---
+                    // PAVEMENT (Default - Black)
                     {
                         'id': 'gl-draw-polygon-fill-static',
                         'type': 'fill',
@@ -303,7 +340,7 @@
                             'line-width': 2
                         }
                     },
-                    // STATIC - EXCLUSION (Red)
+                    // EXCLUSION (Red)
                     {
                         'id': 'gl-draw-polygon-fill-exclusion',
                         'type': 'fill',
@@ -322,16 +359,18 @@
                             'line-width': 2
                         }
                     },
-                    // Vertex points
+                    // Midpoints (Tiny dots to create new corners)
                     {
-                        'id': 'gl-draw-polygon-and-line-vertex-active',
-                        'type': 'circle',
-                        'filter': ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']],
-                        'paint': {
-                            'circle-radius': 5,
-                            'circle-color': '#FFF'
-                        }
-                    },
+                    'id': 'gl-draw-polygon-midpoint',
+                    'type': 'circle',
+                    'filter': ['all',
+                        ['==', '$type', 'Point'],
+                        ['==', 'meta', 'midpoint']],
+                    'paint': {
+                        'circle-radius': 3,
+                        'circle-color': '#fbb03b'
+                    }
+                }
                 ]
             });
 
