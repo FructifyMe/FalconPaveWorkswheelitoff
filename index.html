@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- viewport-fit=cover ensures full screen usage on notched phones -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Falcon Pave Works Tool</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -26,33 +27,36 @@
         body { margin: 0; padding: 0; overflow: hidden; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
         
-        /* Custom Scrollbar for Sidebar */
+        /* Custom Scrollbar */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* --- CRITICAL FIXES --- */
+        /* Prevent iOS zoom on inputs */
+        input, select, textarea { font-size: 16px !important; }
+
+        /* --- MOBILE / TOUCH OPTIMIZATIONS --- */
         
-        /* 1. Restore Button Styles (Tailwind Reset Fix) */
+        /* Larger Touch Targets for Map Controls */
         .mapboxgl-ctrl-group > button {
-            width: 29px;
-            height: 29px;
+            width: 44px !important;  /* Increased from 29px */
+            height: 44px !important;
             display: block;
             padding: 0;
             outline: none;
             border: 0;
             box-sizing: border-box;
-            background-color: #ffffff !important; /* Force white background */
+            background-color: #ffffff !important;
             cursor: pointer;
         }
         
         .mapboxgl-ctrl-group {
             background: #fff !important;
-            border-radius: 4px;
+            border-radius: 8px !important; /* Softer corners */
             overflow: hidden;
-            box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06) !important;
         }
         
-        /* 2. Ensure Icons are visible */
+        /* Ensure Icons are centered and visible */
         .mapbox-gl-draw_ctrl-draw-btn {
             background-repeat: no-repeat;
             background-position: center;
@@ -60,66 +64,84 @@
             visibility: visible !important;
         }
         
-        /* Explicitly ensure polygon icon is visible */
+        /* Polygon Icon */
         .mapbox-gl-draw_polygon {
-            background-image: url('https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/images/polygon.svg') !important; /* Force SVG load */
-            background-size: 18px 18px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/%3E%3C/svg%3E") !important;
+            background-size: 24px 24px !important;
         }
         
+        /* Trash Icon */
         .mapbox-gl-draw_trash {
-            background-image: url('https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/images/trash.svg') !important;
-            background-size: 18px 18px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h18'/%3E%3Cpath d='M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6'/%3E%3Cpath d='M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2'/%3E%3C/svg%3E") !important;
+            background-size: 24px 24px !important;
         }
 
-        /* 3. Fix Geocoder Z-Index */
+        /* Geocoder Styling for Mobile */
         .mapboxgl-ctrl-geocoder { 
-            min-width: 300px; 
+            width: 100% !important;
+            max-width: 300px !important; 
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             z-index: 20;
+            font-size: 16px; /* Touch friendly */
         }
         
-        /* 4. Force Drawing Tools to be visible above map */
+        /* Force Drawing Tools to be visible above map */
         .mapboxgl-ctrl-top-right { 
             z-index: 50 !important; 
-            margin-top: 10px;
-            margin-right: 10px;
+            margin-top: 12px;
+            margin-right: 12px;
+        }
+
+        /* Sidebar Transitions */
+        #sidebar {
+            transition: transform 0.3s ease-in-out;
         }
     </style>
 </head>
-<body class="flex h-screen w-screen bg-gray-50 font-sans text-gray-900">
+<body class="flex h-screen w-screen bg-gray-50 font-sans text-gray-900 overflow-hidden">
 
-    <!-- SIDEBAR -->
-    <div class="w-96 bg-white shadow-xl z-20 flex flex-col border-r border-gray-200 h-full relative shrink-0 flex flex-col">
+    <!-- SIDEBAR (Responsive Drawer) -->
+    <!-- Mobile: Fixed, slide-in. Desktop: Relative, visible. -->
+    <div id="sidebar" class="fixed inset-y-0 left-0 z-40 w-80 md:w-96 bg-white shadow-2xl transform -translate-x-full md:translate-x-0 md:relative flex flex-col h-full shrink-0">
         
         <!-- Header -->
-        <div class="p-6 border-b border-gray-100 shrink-0">
-            <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-                Falcon Pave Works
-            </h1>
-            <div class="flex justify-between items-center mt-2">
-                <p class="text-sm text-gray-500">Internal Estimation Tool</p>
-                <div class="flex gap-2">
-                    <button id="btn-tab-estimator" class="text-xs font-bold text-blue-600 border-b-2 border-blue-600 pb-1">Estimator</button>
-                    <button id="btn-tab-history" class="text-xs font-medium text-gray-400 pb-1 hover:text-gray-600">Saved & History</button>
+        <div class="p-6 border-b border-gray-100 shrink-0 bg-white z-10">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                        Falcon Pave
+                    </h1>
+                    <p class="text-sm text-gray-500 mt-1">Internal Estimation Tool</p>
+                </div>
+                <!-- Close Button (Mobile Only) -->
+                <button id="btn-close-sidebar" class="md:hidden p-2 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+
+            <div class="flex justify-between items-center mt-4">
+                <div class="flex gap-4 border-b border-gray-200 w-full">
+                    <button id="btn-tab-estimator" class="text-sm font-bold text-blue-600 border-b-2 border-blue-600 pb-2 px-1">Estimator</button>
+                    <button id="btn-tab-history" class="text-sm font-medium text-gray-400 pb-2 px-1 hover:text-gray-600">Saved Jobs</button>
                 </div>
             </div>
         </div>
 
         <!-- SCROLLABLE CONTENT AREA -->
-        <div class="flex-1 overflow-y-auto p-6 scrollbar-hide relative">
+        <div class="flex-1 overflow-y-auto p-6 scrollbar-hide relative bg-white">
             
             <!-- TAB 1: ESTIMATOR -->
-            <div id="view-estimator" class="space-y-6">
+            <div id="view-estimator" class="space-y-6 pb-20">
                 
                 <!-- Project Info -->
                 <section class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                     <div class="flex justify-between items-center mb-2">
                         <label class="text-xs font-bold text-gray-500 uppercase">Project Details</label>
-                        <span id="status-unsaved" class="text-[10px] text-amber-500 font-medium hidden">● Unsaved Changes</span>
+                        <span id="status-unsaved" class="text-[10px] text-amber-500 font-medium hidden">● Unsaved</span>
                     </div>
-                    <input type="text" id="input-project-name" placeholder="Project Name (e.g. 123 Main St)" class="w-full text-sm font-medium border-b border-gray-200 focus:border-blue-500 outline-none py-1 mb-3">
-                    <input type="text" id="input-tags" placeholder="Tags (e.g. Driveway, Commercial)" class="w-full text-xs text-gray-500 bg-gray-50 rounded px-2 py-1 outline-none">
+                    <input type="text" id="input-project-name" placeholder="Project Name" class="w-full text-base font-medium border-b border-gray-200 focus:border-blue-500 outline-none py-2 mb-3">
+                    <input type="text" id="input-tags" placeholder="Tags (e.g. Driveway)" class="w-full text-sm text-gray-600 bg-gray-50 rounded px-3 py-2 outline-none">
                 </section>
 
                 <!-- Job Specs -->
@@ -128,110 +150,86 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-700 mb-1">Thickness (in)</label>
-                            <input type="number" id="input-thickness" value="2.0" step="0.5" class="w-full p-2 border border-gray-300 rounded-md text-sm">
+                            <input type="number" id="input-thickness" value="2.0" step="0.5" class="w-full p-3 border border-gray-300 rounded-lg text-base">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-700 mb-1">Density (lbs/ft³)</label>
-                            <input type="number" id="input-density" value="145" class="w-full p-2 border border-gray-300 rounded-md text-sm">
+                            <input type="number" id="input-density" value="145" class="w-full p-3 border border-gray-300 rounded-lg text-base">
                         </div>
                     </div>
                 </section>
 
                 <!-- Selection Actions -->
                 <section id="section-selection" class="hidden bg-blue-50 p-4 rounded-lg border border-blue-100 transition-all">
-                    <h3 class="text-sm font-semibold text-blue-900 mb-3">Selection Actions</h3>
-                    <div class="flex gap-2">
-                        <button id="btn-toggle-exclusion" class="flex-1 py-2 px-3 bg-white border border-blue-200 text-blue-700 text-sm font-medium rounded hover:bg-blue-100">Toggle Exclusion</button>
-                        <button id="btn-delete" class="p-2 bg-white border border-red-200 text-red-600 rounded hover:bg-red-50">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                    <h3 class="text-sm font-semibold text-blue-900 mb-3">Selected Shape</h3>
+                    <div class="flex gap-3">
+                        <button id="btn-toggle-exclusion" class="flex-1 py-3 px-3 bg-white border border-blue-200 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-100 shadow-sm">Toggle Exclusion</button>
+                        <button id="btn-delete" class="p-3 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
                         </button>
                     </div>
-                    <p class="text-xs text-blue-600 mt-2">Red shapes are subtracted from total.</p>
+                    <p class="text-xs text-blue-600 mt-2">Red shapes are subtracted.</p>
                 </section>
 
-                <!-- Empty State -->
-                <div id="section-empty" class="p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center">
-                    <p class="text-sm text-gray-500">Select a shape on map to edit.</p>
-                </div>
-
                 <!-- Actions -->
-                <div class="flex gap-2 pt-2">
-                    <button id="btn-save-job" class="flex-1 bg-gray-900 text-white py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition flex items-center justify-center gap-2">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <button id="btn-save-job" class="col-span-2 bg-gray-900 text-white py-3 rounded-lg text-sm font-medium hover:bg-gray-800 transition flex items-center justify-center gap-2 shadow-lg">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                         Save Job
                     </button>
-                    <button id="btn-export-csv" class="px-4 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm font-medium" title="Export to CSV">
+                    <button id="btn-export-csv" class="py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium flex justify-center items-center gap-2">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Export
                     </button>
-                    <button id="btn-new-job" class="px-4 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm font-medium" title="New Job">
+                    <button id="btn-new-job" class="py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium flex justify-center items-center gap-2">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        New
                     </button>
                 </div>
 
             </div>
 
-            <!-- TAB 2: HISTORY & SAVED -->
-            <div id="view-history" class="hidden space-y-6">
-                
-                <!-- Recent Searches -->
-                <section>
+            <!-- TAB 2: HISTORY -->
+            <div id="view-history" class="hidden space-y-6 pb-20">
+                <div id="list-saved-jobs" class="space-y-3">
+                    <p class="text-sm text-gray-400 italic">No saved jobs yet.</p>
+                </div>
+                <div class="pt-4 border-t border-gray-100">
                     <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Recent Searches</h3>
-                    <div id="list-recent-searches" class="space-y-1">
-                        <!-- JS Populated -->
-                        <p class="text-xs text-gray-400 italic">No recent searches.</p>
-                    </div>
-                </section>
-
-                <!-- Saved Jobs -->
-                <section>
-                    <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Saved Jobs</h3>
-                    <div id="list-saved-jobs" class="space-y-3">
-                        <!-- JS Populated -->
-                        <p class="text-xs text-gray-400 italic">No saved jobs yet.</p>
-                    </div>
-                </section>
-
-                <button onclick="clearAllData()" class="text-xs text-red-400 underline w-full text-center mt-8 hover:text-red-600">Clear All Local Data</button>
-
+                    <div id="list-recent-searches" class="space-y-1"></div>
+                </div>
+                <button onclick="clearAllData()" class="text-xs text-red-400 underline w-full text-center mt-8 p-4">Clear All Data</button>
             </div>
 
         </div>
 
         <!-- FOOTER: CALCULATIONS -->
-        <div class="bg-gray-900 text-white p-6 shrink-0">
-            <div class="flex items-center gap-2 mb-4 border-b border-gray-700 pb-2">
-                <svg class="text-green-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="14"></line><line x1="12" y1="14" x2="12" y2="14"></line><line x1="8" y1="14" x2="8" y2="14"></line><line x1="16" y1="18" x2="16" y2="18"></line><line x1="12" y1="18" x2="12" y2="18"></line><line x1="8" y1="18" x2="8" y2="18"></line></svg>
-                <h2 class="text-lg font-bold">Total Estimate</h2>
+        <div class="bg-gray-900 text-white p-6 shrink-0 shadow-[0_-4px_20px_rgba(0,0,0,0.3)] z-20">
+            <div class="flex justify-between items-center mb-3">
+                <div class="text-xs text-gray-400">Net Area</div>
+                <div id="val-net" class="text-lg font-bold text-white">0 sq ft</div>
             </div>
-
-            <div class="space-y-2 mb-4">
-                <div class="flex justify-between text-xs text-gray-400">
-                    <span>Gross Area</span>
-                    <span id="val-gross">0 sq ft</span>
-                </div>
-                <div class="flex justify-between text-xs text-red-400">
-                    <span>Exclusions</span>
-                    <span id="val-excluded">-0 sq ft</span>
-                </div>
-                <div class="flex justify-between font-medium pt-1 border-t border-gray-700 text-sm">
-                    <span>Net Area</span>
-                    <span id="val-net" class="text-white">0 sq ft</span>
-                </div>
-            </div>
-
-            <div class="bg-green-500/20 border border-green-500/50 p-3 rounded-lg text-center">
-                <span class="block text-xs text-green-200 uppercase tracking-wider font-semibold mb-1">Required Material</span>
-                <span class="block text-3xl font-bold text-white tracking-tight">
+            <div class="bg-green-500/20 border border-green-500/50 p-3 rounded-lg flex justify-between items-center">
+                <span class="text-xs text-green-200 uppercase font-semibold">Material</span>
+                <span class="text-2xl font-bold text-white tracking-tight">
                     <span id="val-tons">0.00</span>
-                    <span class="text-lg font-normal text-green-200 ml-1">tons</span>
+                    <span class="text-sm font-normal text-green-200 ml-1">tons</span>
                 </span>
             </div>
         </div>
     </div>
 
+    <!-- MOBILE OVERLAY -->
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden backdrop-blur-sm transition-opacity opacity-0"></div>
+
     <!-- MAP CONTAINER -->
-    <div class="flex-1 relative h-full">
+    <div class="flex-1 relative h-full w-full">
         <div id="map"></div>
+        
+        <!-- Mobile Toggle Button -->
+        <button id="btn-open-sidebar" class="absolute top-4 left-4 z-20 md:hidden bg-white p-3 rounded-lg shadow-lg text-blue-600">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
     </div>
 
     <script>
@@ -244,7 +242,7 @@
 
         // --- GLOBALS ---
         let map, draw, geocoder;
-        let currentJobId = null; // If null, it's a new job
+        let currentJobId = null; 
         let hasUnsavedChanges = false;
 
         // --- STATE ---
@@ -258,8 +256,7 @@
 
         // --- DOM ELEMENTS ---
         const els = {
-            gross: document.getElementById('val-gross'),
-            excluded: document.getElementById('val-excluded'),
+            gross: document.getElementById('val-gross'), // Hidden in mobile view but kept for calculation logic
             net: document.getElementById('val-net'),
             tons: document.getElementById('val-tons'),
             
@@ -269,7 +266,6 @@
             inputTags: document.getElementById('input-tags'),
             
             sectionSelection: document.getElementById('section-selection'),
-            sectionEmpty: document.getElementById('section-empty'),
             
             btnToggle: document.getElementById('btn-toggle-exclusion'),
             btnDelete: document.getElementById('btn-delete'),
@@ -284,7 +280,13 @@
             
             listJobs: document.getElementById('list-saved-jobs'),
             listSearches: document.getElementById('list-recent-searches'),
-            statusUnsaved: document.getElementById('status-unsaved')
+            statusUnsaved: document.getElementById('status-unsaved'),
+            
+            // Mobile Specific
+            sidebar: document.getElementById('sidebar'),
+            mobileOverlay: document.getElementById('mobile-overlay'),
+            btnOpenSidebar: document.getElementById('btn-open-sidebar'),
+            btnCloseSidebar: document.getElementById('btn-close-sidebar')
         };
 
         // --- INIT ---
@@ -303,8 +305,10 @@
             }
 
             map.on('load', () => {
+                // Navigation controls (Zoom) - Move to bottom-right
                 map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
+                // Geocoder - Reposition for mobile
                 geocoder = new MapboxGeocoder({
                     accessToken: mapboxgl.accessToken,
                     mapboxgl: mapboxgl,
@@ -314,9 +318,10 @@
                 });
                 map.addControl(geocoder, 'top-left');
                 
-                // Hook into Geocoder results
                 geocoder.on('result', (e) => {
                     saveRecentSearch(e.result);
+                    // Close sidebar on mobile when search result selected
+                    closeSidebar(); 
                 });
 
                 draw = new MapboxDraw({
@@ -328,9 +333,26 @@
                 map.addControl(draw, 'top-right');
 
                 setupMapEvents();
-                loadRecents(); // Populate history tab
+                loadRecents(); 
             });
         })();
+
+        // --- MOBILE SIDEBAR LOGIC ---
+        function openSidebar() {
+            els.sidebar.classList.remove('-translate-x-full');
+            els.mobileOverlay.classList.remove('hidden');
+            setTimeout(() => els.mobileOverlay.classList.remove('opacity-0'), 10);
+        }
+
+        function closeSidebar() {
+            els.sidebar.classList.add('-translate-x-full');
+            els.mobileOverlay.classList.add('opacity-0');
+            setTimeout(() => els.mobileOverlay.classList.add('hidden'), 300);
+        }
+
+        els.btnOpenSidebar.onclick = openSidebar;
+        els.btnCloseSidebar.onclick = closeSidebar;
+        els.mobileOverlay.onclick = closeSidebar;
 
         // --- MAP LOGIC ---
         function setupMapEvents() {
@@ -360,11 +382,11 @@
             const netArea = Math.max(0, paveArea - excludeArea);
             const tons = (netArea * (state.thickness / 12) * state.density) / 2000;
 
-            // Store current stats in object for easy export
+            // Store stats
             state.currentStats = { paveArea, excludeArea, netArea, tons };
 
-            els.gross.innerText = Math.round(paveArea).toLocaleString() + ' sq ft';
-            els.excluded.innerText = '-' + Math.round(excludeArea).toLocaleString() + ' sq ft';
+            // Update UI
+            if(els.gross) els.gross.innerText = Math.round(paveArea).toLocaleString() + ' sq ft'; // Check existence
             els.net.innerText = Math.round(netArea).toLocaleString() + ' sq ft';
             els.tons.innerText = tons.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
@@ -372,26 +394,25 @@
         function updateUISelection() {
             if (state.selectedIds.length > 0) {
                 els.sectionSelection.classList.remove('hidden');
-                els.sectionEmpty.classList.add('hidden');
                 const f = draw.get(state.selectedIds[0]);
                 if(f.properties?.user_type === 'exclusion') {
                     els.btnToggle.innerText = "Set to Pavement";
-                    els.btnToggle.className = "flex-1 py-2 px-3 bg-red-50 border border-red-200 text-red-700 text-sm font-medium rounded hover:bg-red-100 transition-colors";
+                    els.btnToggle.className = "flex-1 py-3 px-3 bg-red-50 border border-red-200 text-red-700 text-sm font-medium rounded-lg hover:bg-red-100 shadow-sm";
                 } else {
                     els.btnToggle.innerText = "Set as Exclusion";
-                    els.btnToggle.className = "flex-1 py-2 px-3 bg-white border border-blue-200 text-blue-700 text-sm font-medium rounded hover:bg-blue-100 transition-colors";
+                    els.btnToggle.className = "flex-1 py-3 px-3 bg-white border border-blue-200 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-100 shadow-sm";
                 }
+                
+                // On mobile, open sidebar when selection happens so they see actions
+                if(window.innerWidth < 768) openSidebar();
+
             } else {
                 els.sectionSelection.classList.add('hidden');
-                els.sectionEmpty.classList.remove('hidden');
             }
         }
 
         // --- STORAGE SYSTEM ---
-        
-        function getJobs() {
-            return JSON.parse(localStorage.getItem(KEYS.JOBS) || '[]');
-        }
+        function getJobs() { return JSON.parse(localStorage.getItem(KEYS.JOBS) || '[]'); }
 
         function saveJob() {
             const name = els.inputName.value.trim() || "Untitled Job";
@@ -415,31 +436,24 @@
             const jobs = getJobs();
             const existingIndex = jobs.findIndex(j => j.id === jobData.id);
 
-            if (existingIndex >= 0) {
-                jobs[existingIndex] = jobData; // Update
-            } else {
-                jobs.unshift(jobData); // Add new to top
-            }
+            if (existingIndex >= 0) { jobs[existingIndex] = jobData; } 
+            else { jobs.unshift(jobData); }
 
             localStorage.setItem(KEYS.JOBS, JSON.stringify(jobs));
-            
             currentJobId = jobData.id;
             hasUnsavedChanges = false;
             els.statusUnsaved.classList.add('hidden');
-            
-            // Refresh lists
             loadRecents();
             alert("Job Saved Successfully!");
         }
 
         function loadJob(id) {
-            if (hasUnsavedChanges && !confirm("You have unsaved changes. Discard them?")) return;
+            if (hasUnsavedChanges && !confirm("Discard unsaved changes?")) return;
 
             const jobs = getJobs();
             const job = jobs.find(j => j.id === id);
             if (!job) return;
 
-            // Restore State
             currentJobId = job.id;
             els.inputName.value = job.name;
             els.inputTags.value = job.tags.join(', ');
@@ -448,36 +462,30 @@
             state.thickness = job.thickness;
             state.density = job.density;
 
-            // Restore Map
             draw.deleteAll();
-            if (job.geojson.features.length > 0) {
-                draw.set(job.geojson);
-            }
+            if (job.geojson.features.length > 0) draw.set(job.geojson);
             
             map.flyTo({ center: job.view.center, zoom: job.view.zoom });
-            
             updateStats();
             hasUnsavedChanges = false;
             els.statusUnsaved.classList.add('hidden');
-            
-            // Switch tab
             switchTab('estimator');
+            
+            // Close sidebar on mobile to show map
+            if(window.innerWidth < 768) closeSidebar();
         }
 
         function deleteJob(id, e) {
             e.stopPropagation();
-            if(!confirm("Delete this saved job permanently?")) return;
-            
+            if(!confirm("Delete this job?")) return;
             const jobs = getJobs().filter(j => j.id !== id);
             localStorage.setItem(KEYS.JOBS, JSON.stringify(jobs));
             loadRecents();
-            
             if (currentJobId === id) resetJob();
         }
 
         function resetJob() {
-            if (hasUnsavedChanges && !confirm("Discard unsaved changes and start new?")) return;
-            
+            if (hasUnsavedChanges && !confirm("Discard changes?")) return;
             currentJobId = null;
             draw.deleteAll();
             els.inputName.value = "";
@@ -485,11 +493,11 @@
             hasUnsavedChanges = false;
             els.statusUnsaved.classList.add('hidden');
             updateStats();
+            if(window.innerWidth < 768) closeSidebar(); // Show map for new job
         }
 
         function exportCSV() {
             if (!state.currentStats) return;
-            
             const rows = [
                 ["Falcon Pave Works Estimate"],
                 ["Project", els.inputName.value || "Untitled"],
@@ -505,10 +513,7 @@
                 ["Net Area (sq ft)", Math.round(state.currentStats.netArea)],
                 ["Total Material (tons)", state.currentStats.tons.toFixed(2)]
             ];
-
-            let csvContent = "data:text/csv;charset=utf-8," 
-                + rows.map(e => e.join(",")).join("\n");
-
+            let csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
@@ -520,69 +525,60 @@
 
         function saveRecentSearch(result) {
             let searches = JSON.parse(localStorage.getItem(KEYS.SEARCHES) || '[]');
-            // Remove duplicates
             searches = searches.filter(s => s.id !== result.id);
-            // Add to top
             searches.unshift({
                 id: result.id,
                 text: result.place_name,
-                center: result.center,
-                context: result.context ? result.context.map(c => c.text).join(', ') : ''
+                center: result.center
             });
-            // Limit to 10
             if (searches.length > 10) searches.pop();
-            
             localStorage.setItem(KEYS.SEARCHES, JSON.stringify(searches));
             loadRecents();
         }
 
         function loadRecents() {
-            // Load Jobs
             const jobs = getJobs();
             els.listJobs.innerHTML = "";
-            if (jobs.length === 0) els.listJobs.innerHTML = '<p class="text-xs text-gray-400 italic">No saved jobs.</p>';
+            if (jobs.length === 0) els.listJobs.innerHTML = '<p class="text-sm text-gray-400 italic">No saved jobs.</p>';
             
             jobs.forEach(job => {
                 const div = document.createElement('div');
-                div.className = "p-3 bg-gray-50 border border-gray-200 rounded hover:bg-blue-50 cursor-pointer transition group relative";
+                div.className = "p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md cursor-pointer transition group relative";
                 div.onclick = () => loadJob(job.id);
                 div.innerHTML = `
                     <div class="flex justify-between items-start">
-                        <h4 class="text-sm font-bold text-gray-800 truncate pr-6">${job.name}</h4>
-                        <button onclick="deleteJob('${job.id}', event)" class="text-gray-300 hover:text-red-500 absolute top-3 right-3">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <h4 class="text-sm font-bold text-gray-900 truncate pr-8">${job.name}</h4>
+                        <button onclick="deleteJob('${job.id}', event)" class="text-gray-400 hover:text-red-500 absolute top-4 right-4 p-1">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                         </button>
                     </div>
-                    <div class="flex gap-1 mt-1 flex-wrap">
-                        ${job.tags.map(t => `<span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-medium">${t}</span>`).join('')}
+                    <div class="flex gap-2 mt-2 flex-wrap">
+                        ${job.tags.map(t => `<span class="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-medium border border-blue-100">${t}</span>`).join('')}
                     </div>
-                    <div class="flex justify-between items-center mt-2 text-[10px] text-gray-500">
+                    <div class="flex justify-between items-center mt-3 text-xs text-gray-500">
                         <span>${new Date(job.date).toLocaleDateString()}</span>
-                        <span class="font-mono">${job.stats.tons.toFixed(1)} tons</span>
+                        <span class="font-mono font-medium text-gray-700">${job.stats.tons.toFixed(1)} tons</span>
                     </div>
                 `;
                 els.listJobs.appendChild(div);
             });
 
-            // Load Searches
             const searches = JSON.parse(localStorage.getItem(KEYS.SEARCHES) || '[]');
             els.listSearches.innerHTML = "";
-            if (searches.length === 0) els.listSearches.innerHTML = '<p class="text-xs text-gray-400 italic">No recent searches.</p>';
-
             searches.forEach(s => {
                 const div = document.createElement('div');
-                div.className = "p-2 hover:bg-gray-100 rounded cursor-pointer text-xs text-gray-700 truncate border-b border-gray-100 last:border-0";
+                div.className = "p-3 hover:bg-gray-50 rounded cursor-pointer text-xs text-gray-700 truncate border-b border-gray-100 last:border-0";
                 div.innerText = s.text;
                 div.onclick = () => {
                     map.flyTo({ center: s.center, zoom: 19 });
-                    switchTab('estimator');
+                    closeSidebar();
                 };
                 els.listSearches.appendChild(div);
             });
         }
 
         function clearAllData() {
-            if(confirm("Are you sure? This deletes ALL saved jobs and history.")) {
+            if(confirm("Delete ALL saved jobs and history?")) {
                 localStorage.removeItem(KEYS.JOBS);
                 localStorage.removeItem(KEYS.SEARCHES);
                 location.reload();
@@ -599,18 +595,18 @@
             if (tab === 'estimator') {
                 els.viewEstimator.classList.remove('hidden');
                 els.viewHistory.classList.add('hidden');
-                els.btnTabEst.className = "text-xs font-bold text-blue-600 border-b-2 border-blue-600 pb-1";
-                els.btnTabHist.className = "text-xs font-medium text-gray-400 pb-1 hover:text-gray-600";
+                els.btnTabEst.className = "text-sm font-bold text-blue-600 border-b-2 border-blue-600 pb-2 px-1";
+                els.btnTabHist.className = "text-sm font-medium text-gray-400 pb-2 px-1 hover:text-gray-600";
             } else {
                 els.viewEstimator.classList.add('hidden');
                 els.viewHistory.classList.remove('hidden');
-                els.btnTabEst.className = "text-xs font-medium text-gray-400 pb-1 hover:text-gray-600";
-                els.btnTabHist.className = "text-xs font-bold text-blue-600 border-b-2 border-blue-600 pb-1";
-                loadRecents(); // Refresh when opening
+                els.btnTabEst.className = "text-sm font-medium text-gray-400 pb-2 px-1 hover:text-gray-600";
+                els.btnTabHist.className = "text-sm font-bold text-blue-600 border-b-2 border-blue-600 pb-2 px-1";
+                loadRecents(); 
             }
         }
 
-        // --- EVENT LISTENERS ---
+        // --- LISTENERS ---
         els.btnTabEst.onclick = () => switchTab('estimator');
         els.btnTabHist.onclick = () => switchTab('history');
         els.btnSave.onclick = saveJob;
@@ -631,7 +627,6 @@
             setUnsaved(); updateStats(); updateUISelection();
         };
         
-        // Inputs
         [els.inputThickness, els.inputDensity].forEach(el => {
             el.addEventListener('input', (e) => {
                 state[e.target.id === 'input-thickness' ? 'thickness' : 'density'] = parseFloat(e.target.value) || 0;
@@ -642,7 +637,7 @@
             el.addEventListener('input', setUnsaved);
         });
 
-        // Styles
+        // --- STYLES ---
         function getDrawStyles() {
             return [
                 { 'id': 'gl-draw-line-active', 'type': 'line', 'filter': ['all', ['==', '$type', 'LineString'], ['==', 'active', 'true']], 'layout': { 'line-cap': 'round', 'line-join': 'round' }, 'paint': { 'line-color': '#fbb03b', 'line-dasharray': [0.2, 2], 'line-width': 2 } },
