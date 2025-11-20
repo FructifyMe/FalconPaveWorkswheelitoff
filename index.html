@@ -11,7 +11,7 @@
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     
-    <!-- Reverted to v1.4.0 for stability -->
+    <!-- Using v1.4.0 for stability with styles -->
     <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/mapbox-gl-draw.css" type="text/css">
     <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/mapbox-gl-draw.js"></script>
     
@@ -19,9 +19,6 @@
     <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css" type="text/css">
 
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-
-    <!-- Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
         body { margin: 0; padding: 0; overflow: hidden; }
@@ -38,7 +35,7 @@
         
         /* Larger Touch Targets for Map Controls */
         .mapboxgl-ctrl-group > button {
-            width: 44px !important;  /* Increased from 29px */
+            width: 44px !important;
             height: 44px !important;
             display: block;
             padding: 0;
@@ -51,7 +48,7 @@
         
         .mapboxgl-ctrl-group {
             background: #fff !important;
-            border-radius: 8px !important; /* Softer corners */
+            border-radius: 8px !important;
             overflow: hidden;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06) !important;
         }
@@ -82,7 +79,7 @@
             max-width: 300px !important; 
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             z-index: 20;
-            font-size: 16px; /* Touch friendly */
+            font-size: 16px;
         }
         
         /* Force Drawing Tools to be visible above map */
@@ -93,15 +90,12 @@
         }
 
         /* Sidebar Transitions */
-        #sidebar {
-            transition: transform 0.3s ease-in-out;
-        }
+        #sidebar { transition: transform 0.3s ease-in-out; }
     </style>
 </head>
 <body class="flex h-screen w-screen bg-gray-50 font-sans text-gray-900 overflow-hidden">
 
     <!-- SIDEBAR (Responsive Drawer) -->
-    <!-- Mobile: Fixed, slide-in. Desktop: Relative, visible. -->
     <div id="sidebar" class="fixed inset-y-0 left-0 z-40 w-80 md:w-96 bg-white shadow-2xl transform -translate-x-full md:translate-x-0 md:relative flex flex-col h-full shrink-0">
         
         <!-- Header -->
@@ -270,7 +264,7 @@
         // --- DOM ELEMENTS ---
         const els = {
             gross: document.getElementById('val-gross'),
-            excluded: document.getElementById('val-excluded'), // Added back
+            excluded: document.getElementById('val-excluded'),
             net: document.getElementById('val-net'),
             tons: document.getElementById('val-tons'),
             
@@ -319,10 +313,8 @@
             }
 
             map.on('load', () => {
-                // Navigation controls (Zoom) - Move to bottom-right
                 map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
-                // Geocoder - Reposition for mobile
                 geocoder = new MapboxGeocoder({
                     accessToken: mapboxgl.accessToken,
                     mapboxgl: mapboxgl,
@@ -334,12 +326,12 @@
                 
                 geocoder.on('result', (e) => {
                     saveRecentSearch(e.result);
-                    // Close sidebar on mobile when search result selected
                     closeSidebar(); 
                 });
 
                 draw = new MapboxDraw({
                     displayControlsDefault: false,
+                    userProperties: true, // <--- CRITICAL FIX: Enables styling based on custom properties
                     controls: { polygon: true, trash: true },
                     defaultMode: 'simple_select',
                     styles: getDrawStyles()
@@ -386,7 +378,8 @@
 
             data.features.forEach(feature => {
                 const areaSqFt = turf.area(feature) * 10.7639;
-                if (feature.properties?.user_type === 'exclusion') {
+                // Check boolean flag
+                if (feature.properties?.isExcluded === true) {
                     excludeArea += areaSqFt;
                 } else {
                     paveArea += areaSqFt;
@@ -396,10 +389,8 @@
             const netArea = Math.max(0, paveArea - excludeArea);
             const tons = (netArea * (state.thickness / 12) * state.density) / 2000;
 
-            // Store stats
             state.currentStats = { paveArea, excludeArea, netArea, tons };
 
-            // Update UI
             if(els.gross) els.gross.innerText = Math.round(paveArea).toLocaleString() + ' sq ft'; 
             if(els.excluded) els.excluded.innerText = '-' + Math.round(excludeArea).toLocaleString() + ' sq ft';
             els.net.innerText = Math.round(netArea).toLocaleString() + ' sq ft';
@@ -410,7 +401,8 @@
             if (state.selectedIds.length > 0) {
                 els.sectionSelection.classList.remove('hidden');
                 const f = draw.get(state.selectedIds[0]);
-                if(f.properties?.user_type === 'exclusion') {
+                
+                if(f.properties?.isExcluded === true) {
                     els.btnToggle.innerText = "Set to Pavement";
                     els.btnToggle.className = "flex-1 py-3 px-3 bg-red-50 border border-red-200 text-red-700 text-sm font-medium rounded-lg hover:bg-red-100 shadow-sm";
                 } else {
@@ -418,7 +410,6 @@
                     els.btnToggle.className = "flex-1 py-3 px-3 bg-white border border-blue-200 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-100 shadow-sm";
                 }
                 
-                // On mobile, open sidebar when selection happens so they see actions
                 if(window.innerWidth < 768) openSidebar();
 
             } else {
@@ -485,8 +476,6 @@
             hasUnsavedChanges = false;
             els.statusUnsaved.classList.add('hidden');
             switchTab('estimator');
-            
-            // Close sidebar on mobile to show map
             if(window.innerWidth < 768) closeSidebar();
         }
 
@@ -508,7 +497,7 @@
             hasUnsavedChanges = false;
             els.statusUnsaved.classList.add('hidden');
             updateStats();
-            if(window.innerWidth < 768) closeSidebar(); // Show map for new job
+            if(window.innerWidth < 768) closeSidebar();
         }
 
         function exportCSV() {
@@ -630,9 +619,11 @@
         els.btnToggle.onclick = () => {
             state.selectedIds.forEach(id => {
                 const f = draw.get(id);
-                const newType = f.properties?.user_type === 'exclusion' ? 'pavement' : 'exclusion';
-                draw.setFeatureProperty(id, 'user_type', newType);
+                // Toggle boolean flag
+                const isExcluded = f.properties?.isExcluded === true;
+                draw.setFeatureProperty(id, 'isExcluded', !isExcluded);
             });
+            // Refresh styles by reloading mode
             draw.changeMode('simple_select', { featureIds: state.selectedIds });
             setUnsaved(); updateStats(); updateUISelection();
         };
@@ -660,10 +651,16 @@
                 { 'id': 'gl-draw-polygon-stroke-active', 'type': 'line', 'filter': ['all', ['==', 'active', 'true'], ['==', '$type', 'Polygon']], 'paint': { 'line-color': '#fbb03b', 'line-dasharray': [0.2, 2], 'line-width': 2 } },
                 { 'id': 'gl-draw-polygon-and-line-vertex-stroke-inactive', 'type': 'circle', 'filter': ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']], 'paint': { 'circle-radius': 5, 'circle-color': '#fff' } },
                 { 'id': 'gl-draw-polygon-and-line-vertex-inactive', 'type': 'circle', 'filter': ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']], 'paint': { 'circle-radius': 3, 'circle-color': '#fbb03b' } },
-                { 'id': 'gl-draw-polygon-fill-static', 'type': 'fill', 'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['!=', 'user_type', 'exclusion']], 'paint': { 'fill-color': '#000000', 'fill-opacity': 0.4 } },
-                { 'id': 'gl-draw-polygon-stroke-static', 'type': 'line', 'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['!=', 'user_type', 'exclusion']], 'paint': { 'line-color': '#000000', 'line-width': 2 } },
-                { 'id': 'gl-draw-polygon-fill-exclusion', 'type': 'fill', 'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['==', 'user_type', 'exclusion']], 'paint': { 'fill-color': '#ef4444', 'fill-opacity': 0.4 } },
-                { 'id': 'gl-draw-polygon-stroke-exclusion', 'type': 'line', 'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['==', 'user_type', 'exclusion']], 'paint': { 'line-color': '#ef4444', 'line-width': 2 } },
+                
+                // STATIC (Normal - Black) - Checks if user_isExcluded is NOT true
+                { 'id': 'gl-draw-polygon-fill-static', 'type': 'fill', 'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['!=', 'user_isExcluded', true]], 'paint': { 'fill-color': '#000000', 'fill-opacity': 0.4 } },
+                { 'id': 'gl-draw-polygon-stroke-static', 'type': 'line', 'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['!=', 'user_isExcluded', true]], 'paint': { 'line-color': '#000000', 'line-width': 2 } },
+                
+                // EXCLUSION (Red) - Checks if user_isExcluded IS true
+                // Note: "user_" prefix is added automatically by mapbox-gl-draw when userProperties is true
+                { 'id': 'gl-draw-polygon-fill-exclusion', 'type': 'fill', 'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['==', 'user_isExcluded', true]], 'paint': { 'fill-color': '#ef4444', 'fill-opacity': 0.4 } },
+                { 'id': 'gl-draw-polygon-stroke-exclusion', 'type': 'line', 'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['==', 'user_isExcluded', true]], 'paint': { 'line-color': '#ef4444', 'line-width': 2 } },
+                
                 { 'id': 'gl-draw-polygon-midpoint', 'type': 'circle', 'filter': ['all', ['==', '$type', 'Point'], ['==', 'meta', 'midpoint']], 'paint': { 'circle-radius': 3, 'circle-color': '#fbb03b' } }
             ];
         }
