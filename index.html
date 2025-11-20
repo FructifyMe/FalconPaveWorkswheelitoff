@@ -5,22 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Falcon Pave Works Tool</title>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Mapbox GL JS -->
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     
-    <!-- Mapbox Draw -->
     <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/mapbox-gl-draw.css" type="text/css">
     <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/mapbox-gl-draw.js"></script>
     
-    <!-- Mapbox Geocoder (Search Bar) -->
     <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
     <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css" type="text/css">
 
-    <!-- Turf.js (Math) -->
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
     <style>
@@ -31,43 +26,48 @@
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* Fix Geocoder Z-Index to appear above map */
-        .mapboxgl-ctrl-geocoder { min-width: 300px; }
+        /* Fix Geocoder Z-Index and Positioning */
+        .mapboxgl-ctrl-geocoder { 
+            min-width: 300px; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
         
         /* Force Drawing Tools to be visible above other overlays */
-        .mapboxgl-ctrl-top-right { z-index: 50 !important; }
+        .mapboxgl-ctrl-top-right { 
+            z-index: 50 !important; 
+            margin-top: 10px;
+            margin-right: 10px;
+        }
+        
+        /* Ensure modal is always on top */
+        #modal-token { z-index: 9999; }
     </style>
 </head>
-<body class="flex h-screen w-screen bg-gray-50 font-sans">
+<body class="flex h-screen w-screen bg-gray-50 font-sans text-gray-900">
 
-    <!-- SIDEBAR -->
-    <div class="w-96 bg-white shadow-xl z-10 flex flex-col border-r border-gray-200 h-full relative">
+    <div class="w-96 bg-white shadow-xl z-20 flex flex-col border-r border-gray-200 h-full relative shrink-0">
         
-        <!-- Header -->
         <div class="p-6 border-b border-gray-100">
             <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <!-- Layers Icon -->
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
                 Falcon Pave Works
             </h1>
             <p class="text-sm text-gray-500 mt-1">Internal Estimation Tool</p>
-            <button onclick="clearToken()" class="text-xs text-blue-500 underline mt-2 hover:text-blue-700">Reset API Token</button>
+            <button id="btn-reset-token" class="text-xs text-blue-500 underline mt-2 hover:text-blue-700 cursor-pointer">Reset API Token</button>
         </div>
 
         <div class="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
             
-            <!-- Instructions (Inside Sidebar) -->
             <section class="bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm text-gray-600">
                 <p class="font-semibold mb-2 text-gray-900">How to use:</p>
                 <ul class="list-disc pl-4 space-y-1 text-xs">
                     <li><strong>Search:</strong> Use top-left bar to find address.</li>
-                    <li><strong>Draw:</strong> Use top-right tools to draw pavement.</li>
+                    <li><strong>Draw:</strong> Click the Polygon tool (top-right) to draw.</li>
                     <li><strong>Edit:</strong> Click a shape to select it.</li>
                     <li><strong>Islands:</strong> Select shape & click "Toggle Exclusion".</li>
                 </ul>
             </section>
 
-            <!-- 1. Job Specs -->
             <section>
                 <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Job Specs</h3>
                 <div class="space-y-4">
@@ -94,8 +94,7 @@
                 </div>
             </section>
 
-            <!-- 2. Selection Actions (Hidden by default) -->
-            <section id="section-selection" class="hidden bg-blue-50 p-4 rounded-lg border border-blue-100">
+            <section id="section-selection" class="hidden bg-blue-50 p-4 rounded-lg border border-blue-100 transition-all">
                 <h3 class="text-sm font-semibold text-blue-900 mb-3">Selection Actions</h3>
                 <div class="flex gap-2">
                     <button 
@@ -109,25 +108,21 @@
                         class="p-2 bg-white border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors shadow-sm"
                         title="Delete Selected"
                     >
-                        <!-- Trash Icon -->
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
                     </button>
                 </div>
                 <p class="text-xs text-blue-600 mt-2 flex items-start gap-1">
                     <svg class="mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                    Mark shapes as "Exclusion" (Red) to subtract them from the total area (e.g. islands).
+                    Mark shapes as "Exclusion" (Red) to subtract them from the total area.
                 </p>
             </section>
 
-            <!-- Empty State for Selection -->
             <div id="section-empty" class="p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center">
                 <p class="text-sm text-gray-500">Select a shape on the map to modify it.</p>
             </div>
 
-            <!-- 3. Calculations -->
             <section class="bg-gray-900 text-white p-6 rounded-xl shadow-lg mt-auto">
                 <div class="flex items-center gap-2 mb-6 border-b border-gray-700 pb-4">
-                    <!-- Calculator Icon -->
                     <svg class="text-green-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="14"></line><line x1="12" y1="14" x2="12" y2="14"></line><line x1="8" y1="14" x2="8" y2="14"></line><line x1="16" y1="18" x2="16" y2="18"></line><line x1="12" y1="18" x2="12" y2="18"></line><line x1="8" y1="18" x2="8" y2="18"></line></svg>
                     <h2 class="text-lg font-bold">Estimation</h2>
                 </div>
@@ -159,11 +154,9 @@
         </div>
     </div>
 
-    <!-- MAP CONTAINER -->
-    <div class="flex-1 relative">
+    <div class="flex-1 relative h-full">
         <div id="map"></div>
 
-        <!-- Token Input Modal (Shown if token is missing) -->
         <div id="modal-token" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-gray-900/90 backdrop-blur-sm">
             <div class="max-w-md w-full p-8 bg-white shadow-2xl rounded-xl text-center m-4">
                 <div class="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -179,9 +172,10 @@
                     id="input-token" 
                     placeholder="pk.eyJ1..." 
                     class="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-xs text-gray-600"
-                />
+                >
+                <p id="error-msg" class="text-red-500 text-xs mb-4 hidden"></p>
 
-                <button onclick="saveToken()" class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-md">
+                <button id="btn-save-token" class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-md">
                     Save & Load Map
                 </button>
                 
@@ -194,314 +188,329 @@
 
     <script>
         // ---------------------------------------------------------
-        // 1. CONFIGURATION & AUTH
+        // GLOBAL VARIABLES
         // ---------------------------------------------------------
+        let map;
+        let draw;
         const STORAGE_KEY = 'pave_estimator_mapbox_token';
-        let mapboxToken = localStorage.getItem(STORAGE_KEY);
+
+        // DOM Elements
         const modalToken = document.getElementById('modal-token');
         const inputToken = document.getElementById('input-token');
+        const errorMsg = document.getElementById('error-msg');
+        const btnSaveToken = document.getElementById('btn-save-token');
+        const btnResetToken = document.getElementById('btn-reset-token');
 
-        function saveToken() {
-            const val = inputToken.value.trim();
-            if (val.startsWith('pk.')) {
-                localStorage.setItem(STORAGE_KEY, val);
-                location.reload(); // Reload to initialize map
+        const inputThickness = document.getElementById('input-thickness');
+        const inputDensity = document.getElementById('input-density');
+        
+        const sectionSelection = document.getElementById('section-selection');
+        const sectionEmpty = document.getElementById('section-empty');
+        const btnToggleExclusion = document.getElementById('btn-toggle-exclusion');
+        const btnDelete = document.getElementById('btn-delete');
+
+        const elGross = document.getElementById('val-gross');
+        const elExcluded = document.getElementById('val-excluded');
+        const elNet = document.getElementById('val-net');
+        const elTons = document.getElementById('val-tons');
+
+        // State
+        const state = {
+            thickness: 2.0,
+            density: 145,
+            selectedIds: []
+        };
+
+        // ---------------------------------------------------------
+        // 1. APP INITIALIZATION
+        // ---------------------------------------------------------
+        function checkAuth() {
+            const token = localStorage.getItem(STORAGE_KEY);
+            if (token) {
+                initMap(token);
             } else {
-                alert('Invalid token. It should start with "pk."');
+                showModal();
             }
         }
 
-        function clearToken() {
-            if(confirm("Remove saved Mapbox token?")) {
-                localStorage.removeItem(STORAGE_KEY);
-                location.reload();
-            }
-        }
-
-        // ---------------------------------------------------------
-        // 2. MAP INITIALIZATION LOGIC
-        // ---------------------------------------------------------
-        if (!mapboxToken) {
+        function showModal(msg) {
             modalToken.classList.remove('hidden');
-        } else {
-            initApp(mapboxToken);
+            if (msg) {
+                errorMsg.innerText = msg;
+                errorMsg.classList.remove('hidden');
+            }
         }
 
-        function initApp(token) {
+        function hideModal() {
+            modalToken.classList.add('hidden');
+            errorMsg.classList.add('hidden');
+        }
+
+        // ---------------------------------------------------------
+        // 2. MAPBOX SETUP
+        // ---------------------------------------------------------
+        function initMap(token) {
             mapboxgl.accessToken = token;
 
-            const map = new mapboxgl.Map({
-                container: 'map',
-                style: 'mapbox://styles/mapbox/satellite-streets-v12',
-                center: [-98.5795, 39.8283], // US Center
-                zoom: 3
+            // Check for duplicate map instances (if re-initializing)
+            if (map) return;
+
+            try {
+                map = new mapboxgl.Map({
+                    container: 'map',
+                    style: 'mapbox://styles/mapbox/satellite-streets-v12',
+                    center: [-98.5795, 39.8283], // US Center
+                    zoom: 3
+                });
+            } catch (e) {
+                showModal("Error initializing map. Check console.");
+                return;
+            }
+
+            // Error Handler for Invalid Tokens
+            map.on('error', (e) => {
+                if (e.error && (e.error.status === 401 || e.error.status === 403)) {
+                    console.error("Auth Error:", e);
+                    localStorage.removeItem(STORAGE_KEY);
+                    showModal("Invalid Token. Please check and try again.");
+                }
             });
 
-            // Add Controls
+            map.on('load', () => {
+                hideModal();
+                addControls(token);
+            });
+        }
+
+        function addControls(token) {
+            // Navigation
             map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
-            // ADDED: Geocoder (Search Bar)
+            // Geocoder
             const geocoder = new MapboxGeocoder({
-                accessToken: mapboxgl.accessToken,
+                accessToken: token, // Pass explicitly
                 mapboxgl: mapboxgl,
-                marker: false, // Do not add a blue marker pin on search
+                marker: false,
                 placeholder: 'Search for address...',
-                zoom: 19 // Zoom level when address is found
+                zoom: 19
             });
             map.addControl(geocoder, 'top-left');
 
-
-            // ---------------------------------------------------------
-            // 3. DRAW TOOLS CONFIGURATION (FIXED STYLES)
-            // ---------------------------------------------------------
-            const draw = new MapboxDraw({
+            // Draw Tools with Custom Styles
+            draw = new MapboxDraw({
                 displayControlsDefault: false,
                 controls: {
                     polygon: true,
                     trash: true
                 },
-                // CHANGED: Default to simple selection so user has to click 'Polygon' to start
-                defaultMode: 'simple_select', 
-                styles: [
-                    // --- ACTIVE (DRAWING) ---
-                    // Line active (The line you see while drawing)
-                    {
-                        'id': 'gl-draw-line-active',
-                        'type': 'line',
-                        'filter': ['all', ['==', '$type', 'LineString'], ['==', 'active', 'true']],
-                        'layout': {
-                            'line-cap': 'round',
-                            'line-join': 'round'
-                        },
-                        'paint': {
-                            'line-color': '#fbb03b',
-                            'line-dasharray': [0.2, 2],
-                            'line-width': 2
-                        }
-                    },
-                    // Polygon active (The fill while drawing)
-                    {
-                        'id': 'gl-draw-polygon-fill-active',
-                        'type': 'fill',
-                        'filter': ['all', ['==', 'active', 'true'], ['==', '$type', 'Polygon']],
-                        'paint': {
-                            'fill-color': '#fbb03b',
-                            'fill-opacity': 0.2
-                        }
-                    },
-                    // Polygon stroke active
-                    {
-                        'id': 'gl-draw-polygon-stroke-active',
-                        'type': 'line',
-                        'filter': ['all', ['==', 'active', 'true'], ['==', '$type', 'Polygon']],
-                        'paint': {
-                            'line-color': '#fbb03b',
-                            'line-dasharray': [0.2, 2],
-                            'line-width': 2
-                        }
-                    },
-                    // Vertex Points (The white dots you drag to edit)
-                    {
-                        'id': 'gl-draw-polygon-and-line-vertex-stroke-inactive',
-                        'type': 'circle',
-                        'filter': ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']],
-                        'paint': {
-                            'circle-radius': 5,
-                            'circle-color': '#fff'
-                        }
-                    },
-                    {
-                        'id': 'gl-draw-polygon-and-line-vertex-inactive',
-                        'type': 'circle',
-                        'filter': ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']],
-                        'paint': {
-                            'circle-radius': 3,
-                            'circle-color': '#fbb03b'
-                        }
-                    },
-
-                    // --- STATIC (FINISHED SHAPES) ---
-                    // PAVEMENT (Default - Black)
-                    {
-                        'id': 'gl-draw-polygon-fill-static',
-                        'type': 'fill',
-                        'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['!=', 'user_type', 'exclusion']],
-                        'paint': {
-                            'fill-color': '#000000',
-                            'fill-opacity': 0.4
-                        }
-                    },
-                    {
-                        'id': 'gl-draw-polygon-stroke-static',
-                        'type': 'line',
-                        'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['!=', 'user_type', 'exclusion']],
-                        'paint': {
-                            'line-color': '#000000',
-                            'line-width': 2
-                        }
-                    },
-                    // EXCLUSION (Red)
-                    {
-                        'id': 'gl-draw-polygon-fill-exclusion',
-                        'type': 'fill',
-                        'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['==', 'user_type', 'exclusion']],
-                        'paint': {
-                            'fill-color': '#ef4444',
-                            'fill-opacity': 0.4
-                        }
-                    },
-                    {
-                        'id': 'gl-draw-polygon-stroke-exclusion',
-                        'type': 'line',
-                        'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['==', 'user_type', 'exclusion']],
-                        'paint': {
-                            'line-color': '#ef4444',
-                            'line-width': 2
-                        }
-                    },
-                    // Midpoints (Tiny dots to create new corners)
-                    {
-                    'id': 'gl-draw-polygon-midpoint',
-                    'type': 'circle',
-                    'filter': ['all',
-                        ['==', '$type', 'Point'],
-                        ['==', 'meta', 'midpoint']],
-                    'paint': {
-                        'circle-radius': 3,
-                        'circle-color': '#fbb03b'
-                    }
-                }
-                ]
+                defaultMode: 'simple_select',
+                styles: getDrawStyles() // Moved styles to a function for cleanliness
             });
 
             map.addControl(draw, 'top-right');
 
-            // ---------------------------------------------------------
-            // 4. APP STATE & LOGIC
-            // ---------------------------------------------------------
-            const state = {
-                thickness: 2.0,
-                density: 145,
-                selectedIds: []
-            };
+            // Setup Event Listeners for Map Interactions
+            setupMapEvents();
+        }
 
-            // DOM Elements
-            const inputThickness = document.getElementById('input-thickness');
-            const inputDensity = document.getElementById('input-density');
-            const sectionSelection = document.getElementById('section-selection');
-            const sectionEmpty = document.getElementById('section-empty');
-            const btnToggleExclusion = document.getElementById('btn-toggle-exclusion');
-            const btnDelete = document.getElementById('btn-delete');
-
-            // Display Elements
-            const elGross = document.getElementById('val-gross');
-            const elExcluded = document.getElementById('val-excluded');
-            const elNet = document.getElementById('val-net');
-            const elTons = document.getElementById('val-tons');
-
-            // --- Core Calculation Function ---
-            function updateStats() {
-                const data = draw.getAll();
-                let paveArea = 0;
-                let excludeArea = 0;
-
-                data.features.forEach(feature => {
-                    const areaSqMeters = turf.area(feature);
-                    const areaSqFt = areaSqMeters * 10.7639;
-
-                    if (feature.properties && feature.properties.user_type === 'exclusion') {
-                        excludeArea += areaSqFt;
-                    } else {
-                        paveArea += areaSqFt;
-                    }
-                });
-
-                const netArea = Math.max(0, paveArea - excludeArea);
-                
-                // Formula: (Area * Thickness_in / 12) * Density_lbs_ft3 / 2000
-                const cubicFeet = netArea * (state.thickness / 12);
-                const totalLbs = cubicFeet * state.density;
-                const tons = totalLbs / 2000;
-
-                // Update DOM
-                elGross.innerText = Math.round(paveArea).toLocaleString() + ' sq ft';
-                elExcluded.innerText = '-' + Math.round(excludeArea).toLocaleString() + ' sq ft';
-                elNet.innerText = Math.round(netArea).toLocaleString() + ' sq ft';
-                elTons.innerText = tons.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            }
-
-            // --- Event Listeners: Inputs ---
-            inputThickness.addEventListener('input', (e) => {
-                state.thickness = parseFloat(e.target.value) || 0;
-                updateStats();
-            });
-
-            inputDensity.addEventListener('input', (e) => {
-                state.density = parseFloat(e.target.value) || 0;
-                updateStats();
-            });
-
-            // --- Event Listeners: Map Draw ---
+        // ---------------------------------------------------------
+        // 3. LOGIC & CALCULATIONS
+        // ---------------------------------------------------------
+        function setupMapEvents() {
             map.on('draw.create', updateStats);
             map.on('draw.delete', updateStats);
             map.on('draw.update', updateStats);
-
-            // --- Event Listeners: Selection ---
+            
             map.on('draw.selectionchange', (e) => {
                 state.selectedIds = e.features.map(f => f.id);
-                
-                if (state.selectedIds.length > 0) {
-                    sectionSelection.classList.remove('hidden');
-                    sectionEmpty.classList.add('hidden');
-                    
-                    // Check if current selection is exclusion to update button text/style (optional polish)
-                    const firstFeature = draw.get(state.selectedIds[0]);
-                    if(firstFeature.properties?.user_type === 'exclusion') {
-                        btnToggleExclusion.innerText = "Set to Pavement";
-                        btnToggleExclusion.classList.add('bg-red-50', 'text-red-700', 'border-red-200');
-                        btnToggleExclusion.classList.remove('bg-white', 'text-blue-700', 'border-blue-200');
-                    } else {
-                        btnToggleExclusion.innerText = "Set as Exclusion";
-                        btnToggleExclusion.classList.remove('bg-red-50', 'text-red-700', 'border-red-200');
-                        btnToggleExclusion.classList.add('bg-white', 'text-blue-700', 'border-blue-200');
-                    }
+                updateUISelection();
+            });
+        }
 
+        function updateUISelection() {
+            if (state.selectedIds.length > 0) {
+                sectionSelection.classList.remove('hidden');
+                sectionEmpty.classList.add('hidden');
+                
+                // Update Toggle Button Text/Style based on first selection
+                const firstFeature = draw.get(state.selectedIds[0]);
+                if(firstFeature.properties?.user_type === 'exclusion') {
+                    btnToggleExclusion.innerText = "Set to Pavement";
+                    btnToggleExclusion.className = "flex-1 py-2 px-3 bg-red-50 border border-red-200 text-red-700 text-sm font-medium rounded hover:bg-red-100 transition-colors shadow-sm";
                 } else {
-                    sectionSelection.classList.add('hidden');
-                    sectionEmpty.classList.remove('hidden');
+                    btnToggleExclusion.innerText = "Set as Exclusion";
+                    btnToggleExclusion.className = "flex-1 py-2 px-3 bg-white border border-blue-200 text-blue-700 text-sm font-medium rounded hover:bg-blue-100 transition-colors shadow-sm";
+                }
+            } else {
+                sectionSelection.classList.add('hidden');
+                sectionEmpty.classList.remove('hidden');
+            }
+        }
+
+        function updateStats() {
+            if (!draw) return;
+            const data = draw.getAll();
+            let paveArea = 0;
+            let excludeArea = 0;
+
+            data.features.forEach(feature => {
+                // Turf.area returns square meters
+                const areaSqMeters = turf.area(feature);
+                const areaSqFt = areaSqMeters * 10.7639;
+
+                if (feature.properties && feature.properties.user_type === 'exclusion') {
+                    excludeArea += areaSqFt;
+                } else {
+                    paveArea += areaSqFt;
                 }
             });
 
-            // --- Actions ---
-            btnToggleExclusion.addEventListener('click', () => {
-                state.selectedIds.forEach(id => {
-                    const feature = draw.get(id);
-                    const currentType = feature.properties?.user_type;
-                    const newType = currentType === 'exclusion' ? 'pavement' : 'exclusion';
-                    
-                    // Update Property
-                    draw.setFeatureProperty(id, 'user_type', newType);
-                });
-                
-                // Trigger Mode change to force refresh styles (Draw sometimes caches styles until interaction)
-                // We simply cycle the selection to force a style re-eval
-                const currentIds = state.selectedIds;
-                draw.changeMode('simple_select', { featureIds: currentIds });
-                
-                updateStats();
-                
-                // Manually trigger the selection logic again to update button text
-                map.fire('draw.selectionchange', { features: currentIds.map(id => draw.get(id)) });
-            });
+            const netArea = Math.max(0, paveArea - excludeArea);
+            
+            // Formula: (Area * Thickness_in / 12) * Density_lbs_ft3 / 2000
+            const cubicFeet = netArea * (state.thickness / 12);
+            const totalLbs = cubicFeet * state.density;
+            const tons = totalLbs / 2000;
 
-            btnDelete.addEventListener('click', () => {
-                draw.trash();
-                state.selectedIds = [];
-                sectionSelection.classList.add('hidden');
-                sectionEmpty.classList.remove('hidden');
-                updateStats();
-            });
+            // Update DOM
+            elGross.innerText = Math.round(paveArea).toLocaleString() + ' sq ft';
+            elExcluded.innerText = '-' + Math.round(excludeArea).toLocaleString() + ' sq ft';
+            elNet.innerText = Math.round(netArea).toLocaleString() + ' sq ft';
+            elTons.innerText = tons.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
+
+        // ---------------------------------------------------------
+        // 4. DOM EVENTS
+        // ---------------------------------------------------------
+        btnSaveToken.addEventListener('click', () => {
+            const val = inputToken.value.trim();
+            if (val.startsWith('pk.')) {
+                localStorage.setItem(STORAGE_KEY, val);
+                hideModal();
+                initMap(val); // Load immediately without reload
+            } else {
+                errorMsg.innerText = 'Invalid token. It should start with "pk."';
+                errorMsg.classList.remove('hidden');
+            }
+        });
+
+        btnResetToken.addEventListener('click', () => {
+            if(confirm("Remove saved Mapbox token and reset?")) {
+                localStorage.removeItem(STORAGE_KEY);
+                location.reload();
+            }
+        });
+
+        inputThickness.addEventListener('input', (e) => {
+            state.thickness = parseFloat(e.target.value) || 0;
+            updateStats();
+        });
+
+        inputDensity.addEventListener('input', (e) => {
+            state.density = parseFloat(e.target.value) || 0;
+            updateStats();
+        });
+
+        btnToggleExclusion.addEventListener('click', () => {
+            state.selectedIds.forEach(id => {
+                const feature = draw.get(id);
+                const currentType = feature.properties?.user_type;
+                const newType = currentType === 'exclusion' ? 'pavement' : 'exclusion';
+                
+                draw.setFeatureProperty(id, 'user_type', newType);
+            });
+            
+            // Cycle selection to refresh styles visually
+            const currentIds = state.selectedIds;
+            draw.changeMode('simple_select', { featureIds: currentIds });
+            updateStats();
+            updateUISelection(); // Update button style
+        });
+
+        btnDelete.addEventListener('click', () => {
+            draw.trash();
+            state.selectedIds = [];
+            updateUISelection();
+            updateStats();
+        });
+
+        // ---------------------------------------------------------
+        // 5. STYLES (Config)
+        // ---------------------------------------------------------
+        function getDrawStyles() {
+            return [
+                // ACTIVE (Drawing)
+                {
+                    'id': 'gl-draw-line-active',
+                    'type': 'line',
+                    'filter': ['all', ['==', '$type', 'LineString'], ['==', 'active', 'true']],
+                    'layout': { 'line-cap': 'round', 'line-join': 'round' },
+                    'paint': { 'line-color': '#fbb03b', 'line-dasharray': [0.2, 2], 'line-width': 2 }
+                },
+                {
+                    'id': 'gl-draw-polygon-fill-active',
+                    'type': 'fill',
+                    'filter': ['all', ['==', 'active', 'true'], ['==', '$type', 'Polygon']],
+                    'paint': { 'fill-color': '#fbb03b', 'fill-opacity': 0.2 }
+                },
+                {
+                    'id': 'gl-draw-polygon-stroke-active',
+                    'type': 'line',
+                    'filter': ['all', ['==', 'active', 'true'], ['==', '$type', 'Polygon']],
+                    'paint': { 'line-color': '#fbb03b', 'line-dasharray': [0.2, 2], 'line-width': 2 }
+                },
+                // VERTICES
+                {
+                    'id': 'gl-draw-polygon-and-line-vertex-stroke-inactive',
+                    'type': 'circle',
+                    'filter': ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']],
+                    'paint': { 'circle-radius': 5, 'circle-color': '#fff' }
+                },
+                {
+                    'id': 'gl-draw-polygon-and-line-vertex-inactive',
+                    'type': 'circle',
+                    'filter': ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']],
+                    'paint': { 'circle-radius': 3, 'circle-color': '#fbb03b' }
+                },
+                // STATIC (Finished)
+                // Standard Pavement (Black)
+                {
+                    'id': 'gl-draw-polygon-fill-static',
+                    'type': 'fill',
+                    'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['!=', 'user_type', 'exclusion']],
+                    'paint': { 'fill-color': '#000000', 'fill-opacity': 0.4 }
+                },
+                {
+                    'id': 'gl-draw-polygon-stroke-static',
+                    'type': 'line',
+                    'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['!=', 'user_type', 'exclusion']],
+                    'paint': { 'line-color': '#000000', 'line-width': 2 }
+                },
+                // Exclusion (Red)
+                {
+                    'id': 'gl-draw-polygon-fill-exclusion',
+                    'type': 'fill',
+                    'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['==', 'user_type', 'exclusion']],
+                    'paint': { 'fill-color': '#ef4444', 'fill-opacity': 0.4 }
+                },
+                {
+                    'id': 'gl-draw-polygon-stroke-exclusion',
+                    'type': 'line',
+                    'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['==', 'user_type', 'exclusion']],
+                    'paint': { 'line-color': '#ef4444', 'line-width': 2 }
+                },
+                // Midpoints
+                {
+                    'id': 'gl-draw-polygon-midpoint',
+                    'type': 'circle',
+                    'filter': ['all', ['==', '$type', 'Point'], ['==', 'meta', 'midpoint']],
+                    'paint': { 'circle-radius': 3, 'circle-color': '#fbb03b' }
+                }
+            ];
+        }
+
+        // Run App
+        checkAuth();
     </script>
 </body>
 </html>
