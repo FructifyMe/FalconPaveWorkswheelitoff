@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- viewport-fit=cover ensures full screen usage on notched phones -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Falcon Pave Works Tool</title>
     
@@ -11,7 +10,6 @@
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     
-    <!-- Using v1.4.0 for stability with styles -->
     <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/mapbox-gl-draw.css" type="text/css">
     <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/mapbox-gl-draw.js"></script>
     
@@ -21,19 +19,16 @@
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; }
+        /* IFRAME FIX: Use 100% instead of 100vh to fit Smartsheet widget perfectly */
+        html, body { height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
         
-        /* Custom Scrollbar */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* Prevent iOS zoom on inputs */
         input, select, textarea { font-size: 16px !important; }
 
         /* --- MOBILE / TOUCH OPTIMIZATIONS --- */
-        
-        /* Larger Touch Targets for Map Controls */
         .mapboxgl-ctrl-group > button {
             width: 44px !important;
             height: 44px !important;
@@ -53,7 +48,6 @@
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06) !important;
         }
         
-        /* Ensure Icons are centered and visible */
         .mapbox-gl-draw_ctrl-draw-btn {
             background-repeat: no-repeat;
             background-position: center;
@@ -61,19 +55,16 @@
             visibility: visible !important;
         }
         
-        /* Polygon Icon */
         .mapbox-gl-draw_polygon {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/%3E%3C/svg%3E") !important;
             background-size: 24px 24px !important;
         }
         
-        /* Trash Icon */
         .mapbox-gl-draw_trash {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h18'/%3E%3Cpath d='M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6'/%3E%3Cpath d='M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2'/%3E%3C/svg%3E") !important;
             background-size: 24px 24px !important;
         }
 
-        /* Geocoder Styling for Mobile */
         .mapboxgl-ctrl-geocoder { 
             width: 100% !important;
             max-width: 300px !important; 
@@ -82,18 +73,16 @@
             font-size: 16px;
         }
         
-        /* Force Drawing Tools to be visible above map */
         .mapboxgl-ctrl-top-right { 
             z-index: 50 !important; 
             margin-top: 12px;
             margin-right: 12px;
         }
 
-        /* Sidebar Transitions */
         #sidebar { transition: transform 0.3s ease-in-out; }
     </style>
 </head>
-<body class="flex h-screen w-screen bg-gray-50 font-sans text-gray-900 overflow-hidden">
+<body class="flex bg-gray-50 font-sans text-gray-900 overflow-hidden">
 
     <!-- SIDEBAR (Responsive Drawer) -->
     <div id="sidebar" class="fixed inset-y-0 left-0 z-40 w-80 md:w-96 bg-white shadow-2xl transform -translate-x-full md:translate-x-0 md:relative flex flex-col h-full shrink-0">
@@ -247,6 +236,33 @@
             SEARCHES: 'falcon_pave_searches_v1'
         };
 
+        // --- IFRAME SAFETY: Safe Storage Helper ---
+        const SafeStorage = {
+            _mem: {},
+            getItem: function(key) {
+                try {
+                    return localStorage.getItem(key);
+                } catch(e) {
+                    console.warn("LocalStorage blocked, using memory fallback");
+                    return this._mem[key] || null;
+                }
+            },
+            setItem: function(key, val) {
+                try {
+                    localStorage.setItem(key, val);
+                } catch(e) {
+                    this._mem[key] = val;
+                }
+            },
+            removeItem: function(key) {
+                try {
+                    localStorage.removeItem(key);
+                } catch(e) {
+                    delete this._mem[key];
+                }
+            }
+        };
+
         // --- GLOBALS ---
         let map, draw, geocoder;
         let currentJobId = null; 
@@ -309,7 +325,9 @@
                     zoom: 3
                 });
             } catch (e) {
-                alert("Map Error: " + e.message); return;
+                // If Mapbox fails (e.g. referrer policy), alert user
+                alert("Map failed to load. Ensure URL is added to Mapbox allowed list."); 
+                return;
             }
 
             map.on('load', () => {
@@ -331,7 +349,7 @@
 
                 draw = new MapboxDraw({
                     displayControlsDefault: false,
-                    userProperties: true, // <--- CRITICAL FIX: Enables styling based on custom properties
+                    userProperties: true, 
                     controls: { polygon: true, trash: true },
                     defaultMode: 'simple_select',
                     styles: getDrawStyles()
@@ -417,8 +435,8 @@
             }
         }
 
-        // --- STORAGE SYSTEM ---
-        function getJobs() { return JSON.parse(localStorage.getItem(KEYS.JOBS) || '[]'); }
+        // --- STORAGE SYSTEM (Updated to use SafeStorage) ---
+        function getJobs() { return JSON.parse(SafeStorage.getItem(KEYS.JOBS) || '[]'); }
 
         function saveJob() {
             const name = els.inputName.value.trim() || "Untitled Job";
@@ -445,7 +463,7 @@
             if (existingIndex >= 0) { jobs[existingIndex] = jobData; } 
             else { jobs.unshift(jobData); }
 
-            localStorage.setItem(KEYS.JOBS, JSON.stringify(jobs));
+            SafeStorage.setItem(KEYS.JOBS, JSON.stringify(jobs));
             currentJobId = jobData.id;
             hasUnsavedChanges = false;
             els.statusUnsaved.classList.add('hidden');
@@ -483,7 +501,7 @@
             e.stopPropagation();
             if(!confirm("Delete this job?")) return;
             const jobs = getJobs().filter(j => j.id !== id);
-            localStorage.setItem(KEYS.JOBS, JSON.stringify(jobs));
+            SafeStorage.setItem(KEYS.JOBS, JSON.stringify(jobs));
             loadRecents();
             if (currentJobId === id) resetJob();
         }
@@ -528,7 +546,7 @@
         }
 
         function saveRecentSearch(result) {
-            let searches = JSON.parse(localStorage.getItem(KEYS.SEARCHES) || '[]');
+            let searches = JSON.parse(SafeStorage.getItem(KEYS.SEARCHES) || '[]');
             searches = searches.filter(s => s.id !== result.id);
             searches.unshift({
                 id: result.id,
@@ -536,7 +554,7 @@
                 center: result.center
             });
             if (searches.length > 10) searches.pop();
-            localStorage.setItem(KEYS.SEARCHES, JSON.stringify(searches));
+            SafeStorage.setItem(KEYS.SEARCHES, JSON.stringify(searches));
             loadRecents();
         }
 
@@ -567,7 +585,7 @@
                 els.listJobs.appendChild(div);
             });
 
-            const searches = JSON.parse(localStorage.getItem(KEYS.SEARCHES) || '[]');
+            const searches = JSON.parse(SafeStorage.getItem(KEYS.SEARCHES) || '[]');
             els.listSearches.innerHTML = "";
             searches.forEach(s => {
                 const div = document.createElement('div');
@@ -583,8 +601,8 @@
 
         function clearAllData() {
             if(confirm("Delete ALL saved jobs and history?")) {
-                localStorage.removeItem(KEYS.JOBS);
-                localStorage.removeItem(KEYS.SEARCHES);
+                SafeStorage.removeItem(KEYS.JOBS);
+                SafeStorage.removeItem(KEYS.SEARCHES);
                 location.reload();
             }
         }
@@ -667,4 +685,3 @@
     </script>
 </body>
 </html>
-```eof
