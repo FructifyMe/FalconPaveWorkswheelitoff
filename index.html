@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Falcon Pave Works Tool</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.2/mapbox-gl-draw.css" type="text/css">
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.2/mapbox-gl-draw.min.js"></script>
+    
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css" type="text/css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        
+        /* Custom Scrollbar for Sidebar */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* --- CRITICAL FIXES --- */
+        
+        /* 1. Restore Button Styles (Tailwind Reset Fix) */
+        .mapboxgl-ctrl-group > button {
+            width: 29px;
+            height: 29px;
+            display: block;
+            padding: 0;
+            outline: none;
+            border: 0;
+            box-sizing: border-box;
+            background-color: #ffffff !important; /* Force white background */
+            cursor: pointer;
+        }
+        
+        /* 2. Ensure Icons are visible */
+        .mapbox-gl-draw_ctrl-draw-btn {
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        /* 3. Fix Geocoder Z-Index */
+        .mapboxgl-ctrl-geocoder { 
+            min-width: 300px; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 20;
+        }
+        
+        /* 4. Force Drawing Tools to be visible above map */
+        .mapboxgl-ctrl-top-right { 
+            z-index: 50 !important; 
+            margin-top: 10px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body class="flex h-screen w-screen bg-gray-50 font-sans text-gray-900">
+
+    <!-- SIDEBAR -->
+    <div class="w-96 bg-white shadow-xl z-20 flex flex-col border-r border-gray-200 h-full relative shrink-0 flex flex-col">
+        
+        <!-- Header -->
+        <div class="p-6 border-b border-gray-100 shrink-0">
+            <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                Falcon Pave Works
+            </h1>
+            <div class="flex justify-between items-center mt-2">
+                <p class="text-sm text-gray-500">Internal Estimation Tool</p>
+                <div class="flex gap-2">
+                    <button id="btn-tab-estimator" class="text-xs font-bold text-blue-600 border-b-2 border-blue-600 pb-1">Estimator</button>
+                    <button id="btn-tab-history" class="text-xs font-medium text-gray-400 pb-1 hover:text-gray-600">Saved & History</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCROLLABLE CONTENT AREA -->
+        <div class="flex-1 overflow-y-auto p-6 scrollbar-hide relative">
+            
+            <!-- TAB 1: ESTIMATOR -->
+            <div id="view-estimator" class="space-y-6">
+                
+                <!-- Project Info -->
+                <section class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-xs font-bold text-gray-500 uppercase">Project Details</label>
+                        <span id="status-unsaved" class="text-[10px] text-amber-500 font-medium hidden">● Unsaved Changes</span>
+                    </div>
+                    <input type="text" id="input-project-name" placeholder="Project Name (e.g. 123 Main St)" class="w-full text-sm font-medium border-b border-gray-200 focus:border-blue-500 outline-none py-1 mb-3">
+                    <input type="text" id="input-tags" placeholder="Tags (e.g. Driveway, Commercial)" class="w-full text-xs text-gray-500 bg-gray-50 rounded px-2 py-1 outline-none">
+                </section>
+
+                <!-- Job Specs -->
+                <section>
+                    <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Job Specs</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Thickness (in)</label>
+                            <input type="number" id="input-thickness" value="2.0" step="0.5" class="w-full p-2 border border-gray-300 rounded-md text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Density (lbs/ft³)</label>
+                            <input type="number" id="input-density" value="145" class="w-full p-2 border border-gray-300 rounded-md text-sm">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Selection Actions -->
+                <section id="section-selection" class="hidden bg-blue-50 p-4 rounded-lg border border-blue-100 transition-all">
+                    <h3 class="text-sm font-semibold text-blue-900 mb-3">Selection Actions</h3>
+                    <div class="flex gap-2">
+                        <button id="btn-toggle-exclusion" class="flex-1 py-2 px-3 bg-white border border-blue-200 text-blue-700 text-sm font-medium rounded hover:bg-blue-100">Toggle Exclusion</button>
+                        <button id="btn-delete" class="p-2 bg-white border border-red-200 text-red-600 rounded hover:bg-red-50">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
+                    <p class="text-xs text-blue-600 mt-2">Red shapes are subtracted from total.</p>
+                </section>
+
+                <!-- Empty State -->
+                <div id="section-empty" class="p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center">
+                    <p class="text-sm text-gray-500">Select a shape on map to edit.</p>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex gap-2 pt-2">
+                    <button id="btn-save-job" class="flex-1 bg-gray-900 text-white py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition flex items-center justify-center gap-2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        Save Job
+                    </button>
+                    <button id="btn-export-csv" class="px-4 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm font-medium" title="Export to CSV">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
+                    <button id="btn-new-job" class="px-4 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm font-medium" title="New Job">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- TAB 2: HISTORY & SAVED -->
+            <div id="view-history" class="hidden space-y-6">
+                
+                <!-- Recent Searches -->
+                <section>
+                    <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Recent Searches</h3>
+                    <div id="list-recent-searches" class="space-y-1">
+                        <!-- JS Populated -->
+                        <p class="text-xs text-gray-400 italic">No recent searches.</p>
+                    </div>
+                </section>
+
+                <!-- Saved Jobs -->
+                <section>
+                    <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Saved Jobs</h3>
+                    <div id="list-saved-jobs" class="space-y-3">
+                        <!-- JS Populated -->
+                        <p class="text-xs text-gray-400 italic">No saved jobs yet.</p>
+                    </div>
+                </section>
+
+                <button onclick="clearAllData()" class="text-xs text-red-400 underline w-full text-center mt-8 hover:text-red-600">Clear All Local Data</button>
+
+            </div>
+
+        </div>
+
+        <!-- FOOTER: CALCULATIONS -->
+        <div class="bg-gray-900 text-white p-6 shrink-0">
+            <div class="flex items-center gap-2 mb-4 border-b border-gray-700 pb-2">
+                <svg class="text-green-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="14"></line><line x1="12" y1="14" x2="12" y2="14"></line><line x1="8" y1="14" x2="8" y2="14"></line><line x1="16" y1="18" x2="16" y2="18"></line><line x1="12" y1="18" x2="12" y2="18"></line><line x1="8" y1="18" x2="8" y2="18"></line></svg>
+                <h2 class="text-lg font-bold">Total Estimate</h2>
+            </div>
+
+            <div class="space-y-2 mb-4">
+                <div class="flex justify-between text-xs text-gray-400">
+                    <span>Gross Area</span>
+                    <span id="val-gross">0 sq ft</span>
+                </div>
+                <div class="flex justify-between text-xs text-red-400">
+                    <span>Exclusions</span>
+                    <span id="val-excluded">-0 sq ft</span>
+                </div>
+                <div class="flex justify-between font-medium pt-1 border-t border-gray-700 text-sm">
+                    <span>Net Area</span>
+                    <span id="val-net" class="text-white">0 sq ft</span>
+                </div>
+            </div>
+
+            <div class="bg-green-500/20 border border-green-500/50 p-3 rounded-lg text-center">
+                <span class="block text-xs text-green-200 uppercase tracking-wider font-semibold mb-1">Required Material</span>
+                <span class="block text-3xl font-bold text-white tracking-tight">
+                    <span id="val-tons">0.00</span>
+                    <span class="text-lg font-normal text-green-200 ml-1">tons</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAP CONTAINER -->
+    <div class="flex-1 relative h-full">
+        <div id="map"></div>
+    </div>
+
+    <script>
+        // --- CONFIG ---
+        const PROVIDED_KEY = 'pk.eyJ1IjoiZnJ1Y3RpZnltZSIsImEiOiJjbWk3cGtjOWYwM2psMm5vczJ4eDRxamN0In0.JMcTVNmkgG3Lotc_vNmSWA';
+        const KEYS = {
+            JOBS: 'falcon_pave_jobs_v1',
+            SEARCHES: 'falcon_pave_searches_v1'
+        };
+
+        // --- GLOBALS ---
+        let map, draw, geocoder;
+        let currentJobId = null; // If null, it's a new job
+        let hasUnsavedChanges = false;
+
+        // --- STATE ---
+        const state = { 
+            thickness: 2.0, 
+            density: 145, 
+            selectedIds: [],
+            projectName: "",
+            tags: ""
+        };
+
+        // --- DOM ELEMENTS ---
+        const els = {
+            gross: document.getElementById('val-gross'),
+            excluded: document.getElementById('val-excluded'),
+            net: document.getElementById('val-net'),
+            tons: document.getElementById('val-tons'),
+            
+            inputThickness: document.getElementById('input-thickness'),
+            inputDensity: document.getElementById('input-density'),
+            inputName: document.getElementById('input-project-name'),
+            inputTags: document.getElementById('input-tags'),
+            
+            sectionSelection: document.getElementById('section-selection'),
+            sectionEmpty: document.getElementById('section-empty'),
+            
+            btnToggle: document.getElementById('btn-toggle-exclusion'),
+            btnDelete: document.getElementById('btn-delete'),
+            btnSave: document.getElementById('btn-save-job'),
+            btnExport: document.getElementById('btn-export-csv'),
+            btnNew: document.getElementById('btn-new-job'),
+            
+            viewEstimator: document.getElementById('view-estimator'),
+            viewHistory: document.getElementById('view-history'),
+            btnTabEst: document.getElementById('btn-tab-estimator'),
+            btnTabHist: document.getElementById('btn-tab-history'),
+            
+            listJobs: document.getElementById('list-saved-jobs'),
+            listSearches: document.getElementById('list-recent-searches'),
+            statusUnsaved: document.getElementById('status-unsaved')
+        };
+
+        // --- INIT ---
+        (function initApp() {
+            mapboxgl.accessToken = PROVIDED_KEY;
+            
+            try {
+                map = new mapboxgl.Map({
+                    container: 'map',
+                    style: 'mapbox://styles/mapbox/satellite-streets-v12',
+                    center: [-98.5795, 39.8283],
+                    zoom: 3
+                });
+            } catch (e) {
+                alert("Map Error: " + e.message); return;
+            }
+
+            map.on('load', () => {
+                map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+
+                geocoder = new MapboxGeocoder({
+                    accessToken: mapboxgl.accessToken,
+                    mapboxgl: mapboxgl,
+                    marker: false,
+                    placeholder: 'Search Address...',
+                    zoom: 19
+                });
+                map.addControl(geocoder, 'top-left');
+                
+                // Hook into Geocoder results
+                geocoder.on('result', (e) => {
+                    saveRecentSearch(e.result);
+                });
+
+                draw = new MapboxDraw({
+                    displayControlsDefault: false,
+                    controls: { polygon: true, trash: true },
+                    defaultMode: 'simple_select',
+                    styles: getDrawStyles()
+                });
+                map.addControl(draw, 'top-right');
+
+                setupMapEvents();
+                loadRecents(); // Populate history tab
+            });
+        })();
+
+        // --- MAP LOGIC ---
+        function setupMapEvents() {
+            map.on('draw.create', () => { setUnsaved(); updateStats(); });
+            map.on('draw.delete', () => { setUnsaved(); updateStats(); });
+            map.on('draw.update', () => { setUnsaved(); updateStats(); });
+            map.on('draw.selectionchange', (e) => {
+                state.selectedIds = e.features.map(f => f.id);
+                updateUISelection();
+            });
+        }
+
+        function updateStats() {
+            const data = draw.getAll();
+            let paveArea = 0;
+            let excludeArea = 0;
+
+            data.features.forEach(feature => {
+                const areaSqFt = turf.area(feature) * 10.7639;
+                if (feature.properties?.user_type === 'exclusion') {
+                    excludeArea += areaSqFt;
+                } else {
+                    paveArea += areaSqFt;
+                }
+            });
+
+            const netArea = Math.max(0, paveArea - excludeArea);
+            const tons = (netArea * (state.thickness / 12) * state.density) / 2000;
+
+            // Store current stats in object for easy export
+            state.currentStats = { paveArea, excludeArea, netArea, tons };
+
+            els.gross.innerText = Math.round(paveArea).toLocaleString() + ' sq ft';
+            els.excluded.innerText = '-' + Math.round(excludeArea).toLocaleString() + ' sq ft';
+            els.net.innerText = Math.round(netArea).toLocaleString() + ' sq ft';
+            els.tons.innerText = tons.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function updateUISelection() {
+            if (state.selectedIds.length > 0) {
+                els.sectionSelection.classList.remove('hidden');
+                els.sectionEmpty.classList.add('hidden');
+                const f = draw.get(state.selectedIds[0]);
+                if(f.properties?.user_type === 'exclusion') {
+                    els.btnToggle.innerText = "Set to Pavement";
+                    els.btnToggle.className = "flex-1 py-2 px-3 bg-red-50 border border-red-200 text-red-700 text-sm font-medium rounded hover:bg-red-100 transition-colors";
+                } else {
+                    els.btnToggle.innerText = "Set as Exclusion";
+                    els.btnToggle.className = "flex-1 py-2 px-3 bg-white border border-blue-200 text-blue-700 text-sm font-medium rounded hover:bg-blue-100 transition-colors";
+                }
+            } else {
+                els.sectionSelection.classList.add('hidden');
+                els.sectionEmpty.classList.remove('hidden');
+            }
+        }
+
+        // --- STORAGE SYSTEM ---
+        
+        function getJobs() {
+            return JSON.parse(localStorage.getItem(KEYS.JOBS) || '[]');
+        }
+
+        function saveJob() {
+            const name = els.inputName.value.trim() || "Untitled Job";
+            const tags = els.inputTags.value.split(',').map(t => t.trim()).filter(t => t);
+            const geojson = draw.getAll();
+            const center = map.getCenter();
+            const zoom = map.getZoom();
+
+            const jobData = {
+                id: currentJobId || Date.now().toString(),
+                name: name,
+                date: new Date().toISOString(),
+                tags: tags,
+                thickness: state.thickness,
+                density: state.density,
+                stats: state.currentStats,
+                geojson: geojson,
+                view: { center, zoom }
+            };
+
+            const jobs = getJobs();
+            const existingIndex = jobs.findIndex(j => j.id === jobData.id);
+
+            if (existingIndex >= 0) {
+                jobs[existingIndex] = jobData; // Update
+            } else {
+                jobs.unshift(jobData); // Add new to top
+            }
+
+            localStorage.setItem(KEYS.JOBS, JSON.stringify(jobs));
+            
+            currentJobId = jobData.id;
+            hasUnsavedChanges = false;
+            els.statusUnsaved.classList.add('hidden');
+            
+            // Refresh lists
+            loadRecents();
+            alert("Job Saved Successfully!");
+        }
+
+        function loadJob(id) {
+            if (hasUnsavedChanges && !confirm("You have unsaved changes. Discard them?")) return;
+
+            const jobs = getJobs();
+            const job = jobs.find(j => j.id === id);
+            if (!job) return;
+
+            // Restore State
+            currentJobId = job.id;
+            els.inputName.value = job.name;
+            els.inputTags.value = job.tags.join(', ');
+            els.inputThickness.value = job.thickness;
+            els.inputDensity.value = job.density;
+            state.thickness = job.thickness;
+            state.density = job.density;
+
+            // Restore Map
+            draw.deleteAll();
+            if (job.geojson.features.length > 0) {
+                draw.set(job.geojson);
+            }
+            
+            map.flyTo({ center: job.view.center, zoom: job.view.zoom });
+            
+            updateStats();
+            hasUnsavedChanges = false;
+            els.statusUnsaved.classList.add('hidden');
+            
+            // Switch tab
+            switchTab('estimator');
+        }
+
+        function deleteJob(id, e) {
+            e.stopPropagation();
+            if(!confirm("Delete this saved job permanently?")) return;
+            
+            const jobs = getJobs().filter(j => j.id !== id);
+            localStorage.setItem(KEYS.JOBS, JSON.stringify(jobs));
+            loadRecents();
+            
+            if (currentJobId === id) resetJob();
+        }
+
+        function resetJob() {
+            if (hasUnsavedChanges && !confirm("Discard unsaved changes and start new?")) return;
+            
+            currentJobId = null;
+            draw.deleteAll();
+            els.inputName.value = "";
+            els.inputTags.value = "";
+            hasUnsavedChanges = false;
+            els.statusUnsaved.classList.add('hidden');
+            updateStats();
+        }
+
+        function exportCSV() {
+            if (!state.currentStats) return;
+            
+            const rows = [
+                ["Falcon Pave Works Estimate"],
+                ["Project", els.inputName.value || "Untitled"],
+                ["Date", new Date().toLocaleDateString()],
+                [],
+                ["Parameter", "Value"],
+                ["Asphalt Thickness", state.thickness + " in"],
+                ["Mix Density", state.density + " lbs/ft3"],
+                [],
+                ["Results", ""],
+                ["Gross Area (sq ft)", Math.round(state.currentStats.paveArea)],
+                ["Excluded Area (sq ft)", Math.round(state.currentStats.excludeArea)],
+                ["Net Area (sq ft)", Math.round(state.currentStats.netArea)],
+                ["Total Material (tons)", state.currentStats.tons.toFixed(2)]
+            ];
+
+            let csvContent = "data:text/csv;charset=utf-8," 
+                + rows.map(e => e.join(",")).join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", (els.inputName.value || "estimate") + ".csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function saveRecentSearch(result) {
+            let searches = JSON.parse(localStorage.getItem(KEYS.SEARCHES) || '[]');
+            // Remove duplicates
+            searches = searches.filter(s => s.id !== result.id);
+            // Add to top
+            searches.unshift({
+                id: result.id,
+                text: result.place_name,
+                center: result.center,
+                context: result.context ? result.context.map(c => c.text).join(', ') : ''
+            });
+            // Limit to 10
+            if (searches.length > 10) searches.pop();
+            
+            localStorage.setItem(KEYS.SEARCHES, JSON.stringify(searches));
+            loadRecents();
+        }
+
+        function loadRecents() {
+            // Load Jobs
+            const jobs = getJobs();
+            els.listJobs.innerHTML = "";
+            if (jobs.length === 0) els.listJobs.innerHTML = '<p class="text-xs text-gray-400 italic">No saved jobs.</p>';
+            
+            jobs.forEach(job => {
+                const div = document.createElement('div');
+                div.className = "p-3 bg-gray-50 border border-gray-200 rounded hover:bg-blue-50 cursor-pointer transition group relative";
+                div.onclick = () => loadJob(job.id);
+                div.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <h4 class="text-sm font-bold text-gray-800 truncate pr-6">${job.name}</h4>
+                        <button onclick="deleteJob('${job.id}', event)" class="text-gray-300 hover:text-red-500 absolute top-3 right-3">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                    </div>
+                    <div class="flex gap-1 mt-1 flex-wrap">
+                        ${job.tags.map(t => `<span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-medium">${t}</span>`).join('')}
+                    </div>
+                    <div class="flex justify-between items-center mt-2 text-[10px] text-gray-500">
+                        <span>${new Date(job.date).toLocaleDateString()}</span>
+                        <span class="font-mono">${job.stats.tons.toFixed(1)} tons</span>
+                    </div>
+                `;
+                els.listJobs.appendChild(div);
+            });
+
+            // Load Searches
+            const searches = JSON.parse(localStorage.getItem(KEYS.SEARCHES) || '[]');
+            els.listSearches.innerHTML = "";
+            if (searches.length === 0) els.listSearches.innerHTML = '<p class="text-xs text-gray-400 italic">No recent searches.</p>';
+
+            searches.forEach(s => {
+                const div = document.createElement('div');
+                div.className = "p-2 hover:bg-gray-100 rounded cursor-pointer text-xs text-gray-700 truncate border-b border-gray-100 last:border-0";
+                div.innerText = s.text;
+                div.onclick = () => {
+                    map.flyTo({ center: s.center, zoom: 19 });
+                    switchTab('estimator');
+                };
+                els.listSearches.appendChild(div);
+            });
+        }
+
+        function clearAllData() {
+            if(confirm("Are you sure? This deletes ALL saved jobs and history.")) {
+                localStorage.removeItem(KEYS.JOBS);
+                localStorage.removeItem(KEYS.SEARCHES);
+                location.reload();
+            }
+        }
+
+        // --- UI HELPERS ---
+        function setUnsaved() {
+            hasUnsavedChanges = true;
+            els.statusUnsaved.classList.remove('hidden');
+        }
+
+        function switchTab(tab) {
+            if (tab === 'estimator') {
+                els.viewEstimator.classList.remove('hidden');
+                els.viewHistory.classList.add('hidden');
+                els.btnTabEst.className = "text-xs font-bold text-blue-600 border-b-2 border-blue-600 pb-1";
+                els.btnTabHist.className = "text-xs font-medium text-gray-400 pb-1 hover:text-gray-600";
+            } else {
+                els.viewEstimator.classList.add('hidden');
+                els.viewHistory.classList.remove('hidden');
+                els.btnTabEst.className = "text-xs font-medium text-gray-400 pb-1 hover:text-gray-600";
+                els.btnTabHist.className = "text-xs font-bold text-blue-600 border-b-2 border-blue-600 pb-1";
+                loadRecents(); // Refresh when opening
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        els.btnTabEst.onclick = () => switchTab('estimator');
+        els.btnTabHist.onclick = () => switchTab('history');
+        els.btnSave.onclick = saveJob;
+        els.btnExport.onclick = exportCSV;
+        els.btnNew.onclick = resetJob;
+        els.btnToggle.onclick = () => {
+            state.selectedIds.forEach(id => {
+                const f = draw.get(id);
+                const newType = f.properties?.user_type === 'exclusion' ? 'pavement' : 'exclusion';
+                draw.setFeatureProperty(id, 'user_type', newType);
+            });
+            draw.changeMode('simple_select', { featureIds: state.selectedIds });
+            setUnsaved(); updateStats(); updateUISelection();
+        };
+        els.btnDelete.onclick = () => {
+            draw.trash();
+            state.selectedIds = [];
+            setUnsaved(); updateStats(); updateUISelection();
+        };
+        
+        // Inputs
+        [els.inputThickness, els.inputDensity].forEach(el => {
+            el.addEventListener('input', (e) => {
+                state[e.target.id === 'input-thickness' ? 'thickness' : 'density'] = parseFloat(e.target.value) || 0;
+                setUnsaved(); updateStats();
+            });
+        });
+        [els.inputName, els.inputTags].forEach(el => {
+            el.addEventListener('input', setUnsaved);
+        });
+
+        // Styles
+        function getDrawStyles() {
+            return [
+                { 'id': 'gl-draw-line-active', 'type': 'line', 'filter': ['all', ['==', '$type', 'LineString'], ['==', 'active', 'true']], 'layout': { 'line-cap': 'round', 'line-join': 'round' }, 'paint': { 'line-color': '#fbb03b', 'line-dasharray': [0.2, 2], 'line-width': 2 } },
+                { 'id': 'gl-draw-polygon-fill-active', 'type': 'fill', 'filter': ['all', ['==', 'active', 'true'], ['==', '$type', 'Polygon']], 'paint': { 'fill-color': '#fbb03b', 'fill-opacity': 0.2 } },
+                { 'id': 'gl-draw-polygon-stroke-active', 'type': 'line', 'filter': ['all', ['==', 'active', 'true'], ['==', '$type', 'Polygon']], 'paint': { 'line-color': '#fbb03b', 'line-dasharray': [0.2, 2], 'line-width': 2 } },
+                { 'id': 'gl-draw-polygon-and-line-vertex-stroke-inactive', 'type': 'circle', 'filter': ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']], 'paint': { 'circle-radius': 5, 'circle-color': '#fff' } },
+                { 'id': 'gl-draw-polygon-and-line-vertex-inactive', 'type': 'circle', 'filter': ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']], 'paint': { 'circle-radius': 3, 'circle-color': '#fbb03b' } },
+                { 'id': 'gl-draw-polygon-fill-static', 'type': 'fill', 'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['!=', 'user_type', 'exclusion']], 'paint': { 'fill-color': '#000000', 'fill-opacity': 0.4 } },
+                { 'id': 'gl-draw-polygon-stroke-static', 'type': 'line', 'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['!=', 'user_type', 'exclusion']], 'paint': { 'line-color': '#000000', 'line-width': 2 } },
+                { 'id': 'gl-draw-polygon-fill-exclusion', 'type': 'fill', 'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['==', 'user_type', 'exclusion']], 'paint': { 'fill-color': '#ef4444', 'fill-opacity': 0.4 } },
+                { 'id': 'gl-draw-polygon-stroke-exclusion', 'type': 'line', 'filter': ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['==', 'user_type', 'exclusion']], 'paint': { 'line-color': '#ef4444', 'line-width': 2 } },
+                { 'id': 'gl-draw-polygon-midpoint', 'type': 'circle', 'filter': ['all', ['==', '$type', 'Point'], ['==', 'meta', 'midpoint']], 'paint': { 'circle-radius': 3, 'circle-color': '#fbb03b' } }
+            ];
+        }
+    </script>
+</body>
+</html>
